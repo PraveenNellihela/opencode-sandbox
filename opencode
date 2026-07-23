@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Wrapper to run opencode inside its sandbox container.
+# Install: copy this file somewhere on your $PATH (e.g. ~/bin/opencode) and chmod +x it.
+set -euo pipefail
+
+CWD="$(pwd)"
+
+docker run --rm -it \
+  --name "opencode-$(basename "$CWD")-$$" \
+  -v opencode-config:/home/dev/.config/opencode \
+  -v opencode-data:/home/dev/.local/share/opencode \
+  -v "$CWD":/home/dev/workspace \
+  -w /home/dev/workspace \
+  local:opencode "$@"
