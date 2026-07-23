@@ -4,9 +4,9 @@
 [![Docker](https://img.shields.io/badge/docker-%3E%3D20.10-blue?logo=docker)](https://docs.docker.com/get-docker/)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="opencode-sandbox-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="opencode-sandbox-light.png">
-  <img alt="opencode-sandbox" src="opencode-sandbox-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="opencode-sandbox-light.png">
+  <source media="(prefers-color-scheme: light)" srcset="opencode-sandbox-dark.png">
+  <img alt="opencode-sandbox" src="opencode-sandbox-dark.png">
 </picture>
 
 Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS — Linux, macOS, or Windows (WSL2). Install once, use from any project directory.
