@@ -3,6 +3,8 @@
 # Install: run ./install.sh from the repo directory.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Usage/help
 if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
     cat <<EOF
@@ -28,7 +30,6 @@ fi
 
 # Uninstall
 if [ "${1:-}" = "--uninstall" ]; then
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
     if [ -f "$SCRIPT_DIR/uninstall.sh" ]; then
         exec "$SCRIPT_DIR/uninstall.sh"
     else
@@ -60,7 +61,6 @@ fi
 # Check if image exists, build if not
 if ! $CONTAINER_CMD image inspect local:opencode >/dev/null 2>&1; then
     echo "Image not found. Building..."
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
     $CONTAINER_CMD build -t local:opencode "$SCRIPT_DIR"
 fi
 

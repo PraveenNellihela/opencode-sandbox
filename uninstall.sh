@@ -72,7 +72,7 @@ if [ -n "$VOLUMES" ]; then
     read -p "Remove these volumes? This cannot be undone. [y/N] " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "$VOLUMES" | xargs $CONTAINER_CMD volume rm
+        $CONTAINER_CMD volume rm opencode-config opencode-data 2>/dev/null || true
         info "Removed container volumes"
     else
         warn "Volumes kept. Remove later with: $CONTAINER_CMD volume rm opencode-config opencode-data"

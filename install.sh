@@ -70,6 +70,14 @@ fi
 
 info "Using container runtime: $CONTAINER_CMD"
 
+# WSL-specific guidance
+if [ "$OS" = "wsl" ]; then
+    echo ""
+    echo "Note: On WSL, Docker Desktop must be running with the WSL2 backend enabled."
+    echo "See: https://docs.docker.com/desktop/wsl/"
+    echo ""
+fi
+
 # Check if container runtime is running
 if ! $CONTAINER_CMD info >/dev/null 2>&1; then
     error "$CONTAINER_CMD daemon not running. Start it and try again."
@@ -85,6 +93,11 @@ fi
 
 # Copy wrapper script
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ ! -f "$SCRIPT_DIR/opencode" ]; then
+    echo "Error: opencode wrapper not found in $SCRIPT_DIR"
+    echo "Run install.sh from the repo directory."
+    exit 1
+fi
 cp "$SCRIPT_DIR/opencode" "$HOME/bin/opencode"
 chmod +x "$HOME/bin/opencode"
 info "Installed wrapper to ~/bin/opencode"
