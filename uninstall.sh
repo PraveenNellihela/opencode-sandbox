@@ -36,12 +36,15 @@ fi
 
 # Print PATH removal instructions (never auto-edit rc files)
 echo ""
-echo "Manual step — remove this from your shell config:"
-echo ""
 if [ "$SHELL_NAME" = "fish" ]; then
-    echo "  Run: fish_remove_path ~/bin"
+    echo "Run this command to remove ~/bin from your PATH:"
+    echo ""
+    echo "  fish_remove_path ~/bin"
 else
-    echo "  export PATH=\"\$HOME/bin:\$PATH\""
+    CONFIG_FILE="${HOME}/.${SHELL_NAME}rc"
+    echo "Run this command to remove ~/bin from your PATH:"
+    echo ""
+    echo "  sed -i '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
 fi
 echo ""
 
