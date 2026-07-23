@@ -109,14 +109,12 @@ case ":$PATH:" in
         ;;
     *)
         echo ""
+        echo "Add this line to your $CONFIG_FILE:"
+        echo ""
         if [ "$SHELL_NAME" = "fish" ]; then
-            echo "Run this command to add ~/bin to your PATH permanently:"
-            echo ""
             echo "  fish_add_path ~/bin"
         else
-            echo "Run this command to add ~/bin to your PATH permanently:"
-            echo ""
-            echo "  echo 'export PATH=\"\$HOME/bin:\$PATH\"' >> $CONFIG_FILE"
+            echo "  export PATH=\"\$HOME/bin:\$PATH\""
         fi
         echo ""
         echo "Then restart your shell or run: source $CONFIG_FILE"
