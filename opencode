@@ -1,11 +1,72 @@
 #!/usr/bin/env bash
 # Wrapper to run opencode inside its sandbox container.
-# Install: copy this file somewhere on your $PATH (e.g. ~/bin/opencode) and chmod +x it.
+# Install: run ./install.sh from the repo directory.
 set -euo pipefail
+
+# Usage/help
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+    cat <<EOF
+opencode-sandbox wrapper
+
+Usage: opencode [args...]
+
+Runs opencode inside an isolated Docker container with your current
+directory mounted at /home/dev/workspace.
+
+Options:
+  --help, -h       Show this help message
+  --uninstall      Run the uninstall script
+
+The container only sees your current project directory. Settings and
+auth tokens persist via Docker volumes.
+
+Install: ./install.sh
+Uninstall: ./uninstall.sh
+EOF
+    exit 0
+fi
+
+# Uninstall
+if [ "${1:-}" = "--uninstall" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [ -f "$SCRIPT_DIR/uninstall.sh" ]; then
+        exec "$SCRIPT_DIR/uninstall.sh"
+    else
+        echo "Error: uninstall.sh not found in $SCRIPT_DIR"
+        exit 1
+    fi
+fi
+
+# Check for Docker or Podman
+CONTAINER_CMD=""
+if command -v docker >/dev/null 2>&1; then
+    CONTAINER_CMD="docker"
+elif command -v podman >/dev/null 2>&1; then
+    CONTAINER_CMD="podman"
+else
+    echo "Error: Neither Docker nor Podman found."
+    echo "Install Docker: https://docs.docker.com/get-docker/"
+    echo "Or install Podman: https://podman.io/getting-started/installation"
+    exit 1
+fi
+
+# Check if container runtime is running
+if ! $CONTAINER_CMD info >/dev/null 2>&1; then
+    echo "Error: $CONTAINER_CMD daemon not running."
+    echo "Start it and try again."
+    exit 1
+fi
+
+# Check if image exists, build if not
+if ! $CONTAINER_CMD image inspect local:opencode >/dev/null 2>&1; then
+    echo "Image not found. Building..."
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    $CONTAINER_CMD build -t local:opencode "$SCRIPT_DIR"
+fi
 
 CWD="$(pwd)"
 
-docker run --rm -it \
+$CONTAINER_CMD run --rm -it \
   --name "opencode-$(basename "$CWD")-$$" \
   -v opencode-config:/home/dev/.config/opencode \
   -v opencode-data:/home/dev/.local/share/opencode \
