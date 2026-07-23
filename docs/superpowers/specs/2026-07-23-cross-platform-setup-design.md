@@ -36,14 +36,13 @@ A single POSIX-compatible shell script that handles full setup.
    - Copy `opencode` script to `~/bin/opencode`
    - `chmod +x ~/bin/opencode`
 
-4. **Update PATH (idempotent):**
-   - For bash/zsh: grep config file for the PATH line; if missing, append:
-     ```
-     # opencode-sandbox
-     export PATH="$HOME/bin:$PATH"
-     ```
-   - For fish: use `fish_add_path ~/bin` (idempotent by design)
-   - If `~/bin` already on PATH (check via `case ":$PATH:"`) → skip modification
+4. **Print PATH instructions (never auto-edit rc files):**
+   - If `~/bin` already on PATH (check via `case ":$PATH:"`) → skip, print "already on PATH"
+   - Otherwise, detect shell and print the appropriate line:
+     - bash/zsh: `export PATH="$HOME/bin:$PATH"`
+     - fish: `fish_add_path ~/bin`
+   - Print instructions to add it to the user's config file
+   - **Rationale:** Programmatic editing of shell rc files is failure-prone and risky. Manual paste is safer.
 
 5. **Build Docker image:**
    - `docker build -t local:opencode .`
@@ -53,10 +52,12 @@ A single POSIX-compatible shell script that handles full setup.
    ```
    ✓ Installed opencode-sandbox
    ✓ Wrapper: ~/bin/opencode
-   ✓ PATH: updated in ~/.bashrc
    ✓ Image: local:opencode
 
-   Restart your shell, then: cd ~/code/my-project && opencode
+   Add this to your ~/.bashrc (then restart your shell):
+     export PATH="$HOME/bin:$PATH"
+
+   Then run: cd ~/code/my-project && opencode
    ```
 
 ### Edge Cases
@@ -77,10 +78,11 @@ A single script that reverses everything `install.sh` did, with safety prompts f
 1. **Remove wrapper:**
    - Delete `~/bin/opencode` if it exists
 
-2. **Remove PATH entry:**
-   - Detect shell and config file (same logic as install)
-   - Remove the `# opencode-sandbox` block and `export PATH` line
-   - For fish: `fish_remove_path ~/bin`
+2. **Print PATH removal instructions (never auto-edit rc files):**
+   - Detect shell and print the appropriate removal instruction
+   - For bash/zsh: "Remove this line from your ~/.bashrc: export PATH=\"$HOME/bin:$PATH\""
+   - For fish: "Run: fish_remove_path ~/bin"
+   - **Rationale:** Removing the wrong line from a shell config can break the user's shell. Manual removal is safer.
 
 3. **Prompt about Docker volumes:**
    - List opencode-related volumes: `docker volume ls --format '{{.Name}}' | grep opencode`
@@ -104,15 +106,18 @@ A single script that reverses everything `install.sh` did, with safety prompts f
 5. **Print summary:**
    ```
    ✓ Removed: ~/bin/opencode
-   ✓ Removed: PATH entry from ~/.bashrc
    ✓ Removed: Docker image (if confirmed)
    ✓ Removed: Docker volumes (if confirmed)
+
+   Manual step — remove from your ~/.bashrc:
+     export PATH="$HOME/bin:$PATH"
 
    opencode-sandbox has been uninstalled.
    ```
 
 ### Safety Guarantees
 
+- **Never** edits shell rc files (install prints instructions, uninstall prints removal steps)
 - **Never** removes `~/bin/` directory itself (may contain other files)
 - **Never** removes the project directory or any user code
 - **Never** removes Docker volumes without explicit confirmation
@@ -178,10 +183,12 @@ One-line description.
     3. Run install.sh from inside WSL
 
 ## Shell Support
-  install.sh auto-detects your shell:
-  - bash: modifies ~/.bashrc
-  - zsh: modifies ~/.zshrc
-  - fish: uses fish_add_path
+  install.sh detects your shell and prints the right PATH command:
+  - bash: export PATH="$HOME/bin:$PATH"
+  - zsh: export PATH="$HOME/bin:$PATH"
+  - fish: fish_add_path ~/bin
+
+  You add it to your config file manually (no auto-editing of rc files).
 
 ## Adding Dependencies
   (Keep existing Dockerfile content)
@@ -191,7 +198,8 @@ One-line description.
 
 ## Uninstalling
   ./uninstall.sh
-  Removes wrapper, PATH entry, and optionally Docker image/volumes.
+  Removes wrapper and optionally Docker image/volumes.
+  Prints manual instructions for removing the PATH entry from your shell config.
 
 ## Troubleshooting
   "Docker: command not found"
@@ -233,9 +241,10 @@ One-line description.
 
 ## Verification
 
-1. Run `./install.sh` on a fresh system — should complete without manual steps
+1. Run `./install.sh` — should print PATH instructions without editing any files
 2. Run `opencode --help` — should print usage
-3. Run `./uninstall.sh` — should prompt about volumes, remove wrapper and PATH
+3. Run `./uninstall.sh` — should prompt about volumes, remove wrapper, print PATH removal instructions
 4. After uninstall, `opencode` should not be found
-5. Test on: bash, zsh, fish (at least two shells)
-6. Test on: Linux, macOS (or confirm WSL notes are accurate)
+5. Verify no changes were made to shell rc files during install or uninstall
+6. Test on: bash, zsh, fish (at least two shells)
+7. Test on: Linux, macOS (or confirm WSL notes are accurate)
