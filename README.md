@@ -1,18 +1,27 @@
 # opencode-sandbox
 
-Minimal, isolated, persistent setup for running [opencode](https://opencode.ai) on any OS via Docker.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-%3E%3D20.10-blue?logo=docker)](https://docs.docker.com/get-docker/)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="opencode-sandbox-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="opencode-sandbox-light.png">
+  <img alt="opencode-sandbox" src="opencode-sandbox-light.png">
+</picture>
+
+Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS — Linux, macOS, or Windows (WSL2). Install once, use from any project directory.
 
 ## Quick Start
 
-```bash
+```sh-session
 # 1. Clone and enter the repo
-git clone <repo-url> opencode-sandbox
+git clone https://github.com/PraveenNellihela/opencode-sandbox.git
 cd opencode-sandbox
 
-# 2. Run the installer
+# 2. Run the installer (detects OS, builds Docker image, copies wrapper to ~/bin/)
 ./install.sh
 
-# 3. Use opencode from any project
+# 3. Use opencode, it runs inside Docker, bind-mounted to current directory
 cd ~/code/my-project
 opencode
 ```
@@ -76,7 +85,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 ```
 
-Then rebuild: `docker build -t local:opencode .`
+Then rebuild:
+
+```sh-session
+$ docker build -t local:opencode .
+```
 
 Cached layers make this fast.
 
@@ -109,8 +122,8 @@ Podman removes the root-daemon-on-host concern entirely. See https://podman.io f
 
 ## Uninstalling
 
-```bash
-./uninstall.sh
+```sh-session
+$ ./uninstall.sh
 ```
 
 This removes:
@@ -139,3 +152,13 @@ It does **not** auto-edit your shell config. You remove the PATH line manually.
 **Permission denied on ~/bin**
 → Check ownership: `ls -la ~/bin`
 → Fix: `chown -R $(whoami) ~/bin`
+
+<!-- TODO: Add demo video after recording on Mac
+## Demo
+
+[![demo](./docs/demo.gif)](https://github.com/PraveenNellihela/opencode-sandbox)
+-->
+
+## Contributing
+
+PRs welcome. Open an issue first for discussion on anything non-trivial.
