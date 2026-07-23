@@ -68,6 +68,27 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 
 Then `docker build -t local:opencode .` again — cached layers make this quick.
 
+## Installing plugins / skill packs
+
+Plugins that opencode installs itself (via its own commands, or by fetching
+instructions and writing config) land under `~/.config/opencode`, which is a
+persisted volume — so they survive container restarts without extra work.
+
+Example: [superpowers](https://github.com/obra/superpowers), installed from
+inside opencode with:
+
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.opencode/INSTALL.md
+```
+
+Confirmed working in this setup — it persists across the restart the installer
+requires, no rebuild needed.
+
+Caveat: this only covers what the plugin writes into `~/.config/opencode` or
+`~/.local/share/opencode`. If a plugin's install step also needs an OS-level
+package (apt, a system binary), that part won't survive — add it to the
+Dockerfile per "Adding dependencies later" above.
+
 ## Tightening further (optional)
 
 - **Rootless Podman** instead of Docker: same commands (`podman build`,
