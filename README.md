@@ -1,13 +1,13 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/opencode-sandbox-light.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/opencode-sandbox-dark.png">
+  <img alt="opencode-sandbox" src="docs/opencode-sandbox-dark.png" width="380" style="margin: -40px 0 -80px 0;">
+</picture>
+
 # opencode-sandbox
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-%3E%3D20.10-blue?logo=docker)](https://docs.docker.com/get-docker/)
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="opencode-sandbox-light.png">
-  <source media="(prefers-color-scheme: light)" srcset="opencode-sandbox-dark.png">
-  <img alt="opencode-sandbox" src="opencode-sandbox-dark.png">
-</picture>
 
 Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS — Linux, macOS, or Windows (WSL2). Install once, use from any project directory.
 
@@ -160,6 +160,9 @@ It does **not** auto-edit your shell config. You remove the PATH line manually.
 **Permission denied on ~/bin**
 → Check ownership: `ls -la ~/bin`
 → Fix: `chown -R $(whoami) ~/bin`
+
+**macOS Terminal: Theme fonts and colors render incorrectly**
+→ The built-in macOS Terminal app may display incorrect colors or fonts compared to VSCode's integrated terminal or other terminals. This is a known macOS issue — see [#4721](https://github.com/anomalyco/opencode/issues/4721). A workaround is to use a different terminal (e.g., iTerm2, VSCode terminal, or Kitty). The fix may require upgrading to macOS 26.
 
 <!-- TODO: Add demo video after recording on Mac
 ## Demo
