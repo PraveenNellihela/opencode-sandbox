@@ -1,100 +1,141 @@
 # opencode-sandbox
 
-Minimal, isolated, persistent setup for running [opencode](https://opencode.ai) on Ubuntu via Docker.
+Minimal, isolated, persistent setup for running [opencode](https://opencode.ai) on any OS via Docker.
 
-## Setup
-
-```bash
-# 1. Build the image
-docker build -t local:opencode .
-
-# 2. Put the wrapper on your PATH
-mkdir -p ~/bin
-cp opencode ~/bin/opencode
-chmod +x ~/bin/opencode
-# make sure ~/bin is on your PATH (add to ~/.bashrc if not):
-#   export PATH="$HOME/bin:$PATH"
-```
-
-## Usage
-
-From inside any project directory:
+## Quick Start
 
 ```bash
-cd ~/code/my-repo
+# 1. Clone and enter the repo
+git clone <repo-url> opencode-sandbox
+cd opencode-sandbox
+
+# 2. Run the installer
+./install.sh
+
+# 3. Use opencode from any project
+cd ~/code/my-project
 opencode
 ```
 
-The current directory is bind-mounted into the container at `/home/dev/workspace`,
-so opencode reads and writes your actual files — no copy-in/copy-out.
+The installer detects your OS and shell, copies the wrapper to `~/bin/`, builds the Docker image, and prints the PATH command you need to add to your shell config.
 
-## What persists vs. what doesn't
+## How It Works
 
-- **Persists** (named Docker volumes): `~/.config/opencode` (settings, plugins) and
-  `~/.local/share/opencode` (auth tokens, session data). These survive container
-  restarts and `docker rm`, so you authenticate once and install plugins once.
-- **Does not persist**: anything installed at the OS level inside a running
-  container (e.g. `apt install foo` during a session) — the container is `--rm`,
-  so that's gone when it exits. Add it to the `Dockerfile` and rebuild instead;
-  rebuilds are fast since the apt layer is cached until you change it.
+- **Isolated:** Container only sees the current project directory (bind mount). Not your home directory, not other repos, not host processes.
+- **Persistent:** Settings and auth tokens survive container restarts via Docker volumes.
+- **Secure:** Runs as non-root user with no sudo. Docker networking only.
 
-## Isolation model
+## What Persists vs. What Doesn't
 
-- Container only sees: the current project directory (bind mount) + the two
-  named volumes. Not your home directory, not other repos, not host processes.
-- Runs as a non-root user (`dev`) with **no sudo** — see below for why.
-- Default Docker networking (bridge) — opencode can reach the internet
-  (needed for the LLM API calls) but nothing on the host is exposed.
+**Persists** (Docker volumes):
+- `~/.config/opencode` — settings, plugins
+- `~/.local/share/opencode` — auth tokens, session data
 
-### Why no sudo
+**Does not persist** (lost when container exits):
+- OS-level packages installed during a session
+- Any changes outside the above directories
 
-An earlier version of this setup gave `dev` passwordless sudo "for convenience."
-That mostly defeats the point of a non-root user: if the user can `sudo` with no
-password, it can become root instantly, so on privilege alone it's equivalent to
-just running as root. The value of non-root only shows up when the process
-*can't* trivially escalate. If you find opencode needs a package mid-session,
-that's a signal to add it to the Dockerfile and rebuild, not to hand out live
-root.
+If you need a package (e.g., Node.js for a plugin), add it to the `Dockerfile` and rebuild.
 
-## Adding dependencies later
+## Cross-Platform
 
-Common case: a plugin or MCP server needs Node.js. Add to the Dockerfile before
-the `USER dev` line:
+### Linux
+
+Works out of the box with Docker Engine installed.
+
+### macOS
+
+Install Docker Desktop first: https://docs.docker.com/desktop/install/mac-install/
+
+Apple Silicon and Intel both supported.
+
+### Windows (WSL2)
+
+1. Install WSL2: `wsl --install`
+2. Install Docker Desktop with WSL2 backend
+3. Run `install.sh` from inside WSL
+
+## Shell Support
+
+The installer detects your shell and prints the appropriate PATH command:
+
+| Shell | Command to add | Config file |
+|-------|----------------|-------------|
+| bash | `export PATH="$HOME/bin:$PATH"` | `~/.bashrc` |
+| zsh | `export PATH="$HOME/bin:$PATH"` | `~/.zshrc` |
+| fish | `fish_add_path ~/bin` | `~/.config/fish/config.fish` |
+
+The installer does **not** auto-edit your shell config. You add the line manually for safety.
+
+## Adding Dependencies
+
+If a plugin or MCP server needs a system package (e.g., Node.js), add to the `Dockerfile` before the `USER dev` line:
 
 ```dockerfile
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 ```
 
-Then `docker build -t local:opencode .` again — cached layers make this quick.
+Then rebuild: `docker build -t local:opencode .`
 
-## Installing plugins / skill packs
+Cached layers make this fast.
 
-Plugins that opencode installs itself (via its own commands, or by fetching
-instructions and writing config) land under `~/.config/opencode`, which is a
-persisted volume — so they survive container restarts without extra work.
+## Installing Plugins
 
-Example: [superpowers](https://github.com/obra/superpowers), installed from
-inside opencode with:
+Plugins that opencode installs itself land under `~/.config/opencode` (a persisted volume), so they survive container restarts.
+
+Example: [superpowers](https://github.com/obra/superpowers), installed from inside opencode with:
 
 ```
 Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.opencode/INSTALL.md
 ```
 
-Confirmed working in this setup — it persists across the restart the installer
-requires, no rebuild needed.
+## Security Model
 
-Caveat: this only covers what the plugin writes into `~/.config/opencode` or
-`~/.local/share/opencode`. If a plugin's install step also needs an OS-level
-package (apt, a system binary), that part won't survive — add it to the
-Dockerfile per "Adding dependencies later" above.
+- **Non-root:** Container runs as `dev` user with no sudo.
+- **Minimal access:** Only sees current project directory via bind mount.
+- **Network:** Default bridge networking — can reach internet (for LLM APIs) but nothing on host is exposed.
 
-## Tightening further (optional)
+If you need live root for something, that's a signal to add it to the Dockerfile and rebuild, not to grant privilege escalation.
 
-- **Rootless Podman** instead of Docker: same commands (`podman build`,
-  `podman run`), removes the root-daemon-on-host concern entirely.
-- **Read-only SSH key** for git over SSH:
-  `-v ~/.ssh/id_ed25519:/home/dev/.ssh/id_ed25519:ro` added to the wrapper script.
-- **Network egress restriction**: put the container on a custom Docker network
-  with firewall rules limiting it to your LLM provider's API, if you want to be
-  strict about what the sandbox can reach.
+### Using Podman instead of Docker
+
+The scripts support Podman as a Docker alternative. Install Podman:
+
+- Linux: `sudo apt install podman` or `sudo dnf install podman`
+- macOS: `brew install podman`
+
+Podman removes the root-daemon-on-host concern entirely. See https://podman.io for details.
+
+## Uninstalling
+
+```bash
+./uninstall.sh
+```
+
+This removes:
+- `~/bin/opencode` (wrapper script)
+- Docker image (optional, prompted)
+- Docker volumes (optional, prompted — won't delete without confirmation)
+
+It does **not** auto-edit your shell config. You remove the PATH line manually.
+
+## Troubleshooting
+
+**"Docker: command not found" / "Podman: command not found"**
+→ Install Docker: https://docs.docker.com/get-docker/
+→ Or install Podman: https://podman.io/getting-started/installation
+
+**"Cannot connect to the Docker daemon" / "Cannot connect to Podman socket"**
+→ Start Docker Desktop or: `sudo systemctl start docker`
+→ For Podman: `podman machine start` (macOS) or check system service
+
+**"opencode: command not found" after install**
+→ Restart your shell, or: `source ~/.bashrc` (or `~/.zshrc`)
+
+**"Image not found" error**
+→ Run: `./install.sh` (rebuilds the image)
+
+**Permission denied on ~/bin**
+→ Check ownership: `ls -la ~/bin`
+→ Fix: `chown -R $(whoami) ~/bin`
