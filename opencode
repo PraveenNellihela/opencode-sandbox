@@ -67,11 +67,17 @@ fi
 CWD="$(pwd)"
 
 # Build env flags for proper terminal rendering inside the container
-ENV_FLAGS=(-e TERM -e COLORTERM=truecolor)
+# TERM: pass host terminal type (xterm-256color if unset)
+# COLORTERM: advertise truecolor support
+ENV_FLAGS=(-e "TERM=${TERM:-xterm-256color}" -e COLORTERM=truecolor)
 
-# Detect macOS dark mode
-if [ "$(uname -s)" = "Darwin" ] && [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
-    ENV_FLAGS+=("-e" "COLORFGBG=12;16")
+# Detect macOS dark mode and set background hint
+if [ "$(uname -s)" = "Darwin" ]; then
+    if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
+        ENV_FLAGS+=("-e" "COLORFGBG=12;16")
+    else
+        ENV_FLAGS+=("-e" "COLORFGBG=0;15")
+    fi
 fi
 
 $CONTAINER_CMD run --rm -it \
