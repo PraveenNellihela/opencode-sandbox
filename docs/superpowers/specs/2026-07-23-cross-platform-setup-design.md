@@ -18,7 +18,7 @@ Mixed — developers comfortable with Docker and those new to containers. The se
 
 ## Component 1: `install.sh`
 
-A single POSIX-compatible shell script that handles full setup.
+A single bash shell script that handles full setup.
 
 ### Behavior
 
