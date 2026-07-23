@@ -66,15 +66,23 @@ Apple Silicon and Intel both supported.
 
 ## Shell Support
 
-The installer detects your shell and prints the appropriate PATH command:
+The installer detects your shell and prints a copy-pasteable command to add `~/bin` to your PATH:
 
-| Shell | Command to add | Config file |
+| Shell | Command to run | Config file |
 |-------|----------------|-------------|
-| bash | `export PATH="$HOME/bin:$PATH"` | `~/.bashrc` |
-| zsh | `export PATH="$HOME/bin:$PATH"` | `~/.zshrc` |
+| bash | `echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc` | `~/.bashrc` |
+| zsh | `echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc` | `~/.zshrc` |
 | fish | `fish_add_path ~/bin` | `~/.config/fish/config.fish` |
 
-The installer does **not** auto-edit your shell config. You add the line manually for safety.
+To remove after uninstalling:
+
+| Shell | Command to run |
+|-------|----------------|
+| bash | `sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' ~/.bashrc` |
+| zsh | `sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' ~/.zshrc` |
+| fish | `fish_remove_path ~/bin` |
+
+The installer does **not** auto-edit your shell config. You run the command yourself for safety.
 
 ## Adding Dependencies
 
