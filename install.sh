@@ -49,23 +49,26 @@ echo "=========================="
 echo "OS:    $OS"
 echo "Shell: $SHELL_NAME"
 echo "Config: $CONFIG_FILE"
-echo "Container: ${CONTAINER_CMD:-none}"
 echo ""
 
 # Check for Docker or Podman
 CONTAINER_CMD=""
 if command -v docker >/dev/null 2>&1; then
     CONTAINER_CMD="docker"
-    info "Docker found: $(docker --version)"
 elif command -v podman >/dev/null 2>&1; then
     CONTAINER_CMD="podman"
-    info "Podman found: $(podman --version)"
 else
-    error "Neither Docker nor Podman found."
-    echo "Install Docker: https://docs.docker.com/get-docker/"
-    echo "Or install Podman: https://podman.io/getting-started/installation"
+    echo ""
+    echo "Neither Docker nor Podman found."
+    echo ""
+    echo "Install one of the following:"
+    echo "  Docker:  https://docs.docker.com/get-docker/"
+    echo "  Podman:  https://podman.io/getting-started/installation"
+    echo ""
     exit 1
 fi
+
+info "Using container runtime: $CONTAINER_CMD"
 
 # Check if container runtime is running
 if ! $CONTAINER_CMD info >/dev/null 2>&1; then
