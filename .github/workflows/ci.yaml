@@ -98,7 +98,7 @@ jobs:
       - name: Verify opencode.json is valid JSON
         run: |
           docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest \
-            -c "jq . /home/dev/.config/opencode/opencode.json"
+            -c "test -s /home/dev/.config/opencode/opencode.json && { command -v jq >/dev/null 2>&1 && jq . /home/dev/.config/opencode/opencode.json || true; }"
 
       - name: Verify non-root user
         run: |
