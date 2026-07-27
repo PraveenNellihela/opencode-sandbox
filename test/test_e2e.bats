@@ -11,21 +11,21 @@ setup() {
 
 @test "non-root user exists" {
     if ! has_docker; then skip "Docker not available"; fi
-    run docker run --rm test-minimal:latest whoami
+    run docker run --rm --entrypoint /bin/sh test-minimal:latest -c "whoami"
     [ "$status" -eq 0 ]
     [[ "$output" == "dev" ]]
 }
 
 @test "opencode binary is in PATH" {
     if ! has_docker; then skip "Docker not available"; fi
-    run docker run --rm test-minimal:latest which opencode
+    run docker run --rm --entrypoint /bin/sh test-minimal:latest -c "which opencode"
     [ "$status" -eq 0 ]
 }
 
 @test "opencode.json is valid JSON" {
     if ! has_docker; then skip "Docker not available"; fi
-    run docker run --rm test-minimal:latest \
-        jq . /home/dev/.config/opencode/opencode.json
+    run docker run --rm --entrypoint /bin/sh test-minimal:latest \
+        -c "jq . /home/dev/.config/opencode/opencode.json"
     [ "$status" -eq 0 ]
 }
 
@@ -44,16 +44,16 @@ setup() {
 
 @test "recommended image has agent files" {
     if ! has_docker; then skip "Docker not available"; fi
-    run docker run --rm test-recommended:latest \
-        bash -c 'ls /home/dev/.config/opencode/agents/*.md 2>/dev/null | wc -l'
+    run docker run --rm --entrypoint /bin/sh test-recommended:latest \
+        -c "ls /home/dev/.config/opencode/agents/*.md 2>/dev/null | wc -l"
     [ "$status" -eq 0 ]
     [[ "${output// /}" -eq 6 ]]
 }
 
 @test "recommended image has CLI tools" {
     if ! has_docker; then skip "Docker not available"; fi
-    run docker run --rm test-recommended:latest which rg
+    run docker run --rm --entrypoint /bin/sh test-recommended:latest -c "which rg"
     [ "$status" -eq 0 ]
-    run docker run --rm test-recommended:latest which jq
+    run docker run --rm --entrypoint /bin/sh test-recommended:latest -c "which jq"
     [ "$status" -eq 0 ]
 }
