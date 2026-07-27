@@ -72,14 +72,14 @@ WORKDIR /home/dev
 RUN mkdir -p /home/dev/.config/opencode /home/dev/.local/share/opencode
 
 # ── Seed opencode config template and configure script ───────
-COPY --chown=dev:dev preconfig/ /preconfig/
-COPY --chown=dev:dev scripts/configure-opencode.sh /tmp/configure-opencode.sh
+COPY --chown=dev:dev preconfig/ /home/dev/.tmp/preconfig/
+COPY --chown=dev:dev scripts/configure-opencode.sh /home/dev/.tmp/configure-opencode.sh
 
 # Pass build args as env vars for the configure script, then generate config
 ENV OPCODE_PLUGINS=$OPCODE_PLUGINS
 ENV OPCODE_MCP=$OPCODE_MCP
 ENV OPCODE_AGENTS=$OPCODE_AGENTS
-RUN bash /tmp/configure-opencode.sh /home/dev/.config/opencode /preconfig && rm /tmp/configure-opencode.sh && rm -rf /preconfig
+RUN bash /home/dev/.tmp/configure-opencode.sh /home/dev/.config/opencode /home/dev/.tmp/preconfig && rm -rf /home/dev/.tmp
 
 # ── Install opencode ─────────────────────────────────────────
 RUN curl -fsSL https://opencode.ai/install | bash
