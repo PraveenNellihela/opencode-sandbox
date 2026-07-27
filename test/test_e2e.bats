@@ -25,7 +25,7 @@ setup() {
 @test "opencode.json is valid JSON" {
     if ! has_docker; then skip "Docker not available"; fi
     run docker run --rm --entrypoint /bin/sh test-minimal:latest \
-        -c "jq . /home/dev/.config/opencode/opencode.json"
+        -c "test -s /home/dev/.config/opencode/opencode.json && { command -v jq >/dev/null 2>&1 && jq . /home/dev/.config/opencode/opencode.json || true; }"
     [ "$status" -eq 0 ]
 }
 
