@@ -39,21 +39,17 @@ setup() {
     [[ "$output" == *"Python"* ]]
 }
 
-@test "-t sets toolchain flags" {
-    run bash -c '
-        source ./install.sh --dry-run 2>/dev/null || true
-        # Test that the install.sh help shows toolchain options
-    '
+@test "--toolchain flag appears in help" {
     run ./install.sh --help
     [[ "$output" == *"--toolchain"* ]]
 }
 
-@test "-p sets plugins" {
+@test "--plugin flag appears in help" {
     run ./install.sh --help
     [[ "$output" == *"--plugin"* ]]
 }
 
-@test "-a sets agents flag" {
+@test "--agents flag appears in help" {
     run ./install.sh --help
     [[ "$output" == *"--agents"* ]]
 }

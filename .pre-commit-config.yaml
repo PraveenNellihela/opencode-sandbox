@@ -8,8 +8,21 @@ repos:
         types: [text]
         exclude_types: [markdown]
 
+      - id: shellcheck
+        args: ["--severity=warning"]
+        name: shellcheck (opencode wrapper)
+        files: ^opencode$
+        types: [text]
+
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.8.0
     hooks:
       - id: shfmt
         args: ["-i", "4", "-bn"]
+        types: [shell]
+
+      - id: shfmt
+        args: ["-i", "4", "-bn"]
+        name: shfmt (opencode wrapper)
+        files: ^opencode$
+        types: [text]

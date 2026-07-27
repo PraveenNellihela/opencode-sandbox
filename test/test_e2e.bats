@@ -2,6 +2,12 @@ setup() {
     load 'helper'
 }
 
+teardown() {
+    if has_docker; then
+        docker rmi test-minimal:latest test-recommended:latest 2>/dev/null || true
+    fi
+}
+
 @test "image builds with minimal config" {
     if ! has_docker; then skip "Docker not available"; fi
     run docker build -t test-minimal:latest \

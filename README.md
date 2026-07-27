@@ -330,7 +330,7 @@ This runs ShellCheck and `shfmt` on every commit. Hooks are configured in `.pre-
 
 ```
 test/
-  helper.bats                    # Shared test helper functions
+  helper.bash                    # Shared test helper functions
   test_configure.bats            # configure-opencode.sh unit tests
   test_wrapper.bats              # opencode wrapper behavior tests
   test_install_flags.bats        # install.sh flag parsing tests
