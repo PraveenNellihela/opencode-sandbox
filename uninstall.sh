@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
+# Colors for output — use bold variants to match install.sh
+RED='\033[1;31m'
+GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
@@ -20,7 +20,16 @@ detect_shell() {
     esac
 }
 
+# Detect OS for sed compatibility
+detect_os() {
+    case "$(uname -s)" in
+        Darwin*) echo "macos";;
+        *)       echo "linux";;
+    esac
+}
+
 SHELL_NAME=$(detect_shell)
+OS=$(detect_os)
 
 echo "opencode-sandbox uninstaller"
 echo "============================"
@@ -34,17 +43,29 @@ else
     warn "~/bin/opencode not found (already removed?)"
 fi
 
-# Print PATH removal instructions (never auto-edit rc files)
+# Print PATH removal command (user runs it themselves)
 echo ""
+CONFIG_FILE="${HOME}/.${SHELL_NAME}rc"
 if [ "$SHELL_NAME" = "fish" ]; then
-    echo "Run this command to remove ~/bin from your PATH:"
-    echo ""
-    echo "  fish_remove_path ~/bin"
+    if grep -q 'fish_add_path ~/bin' "$HOME/.config/fish/config.fish" 2>/dev/null; then
+        echo "Run this command to remove ~/bin from your PATH:"
+        echo ""
+        echo "  fish_remove_path ~/bin"
+    else
+        warn "~/bin not found in fish PATH config"
+    fi
 else
-    CONFIG_FILE="${HOME}/.${SHELL_NAME}rc"
-    echo "Run this command to remove ~/bin from your PATH:"
-    echo ""
-    echo "  sed -i '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
+    if grep -q 'export PATH="\$HOME/bin:\$PATH"' "$CONFIG_FILE" 2>/dev/null; then
+        echo "Run this command to remove ~/bin from your PATH:"
+        echo ""
+        if [ "$OS" = "macos" ]; then
+            echo "  sed -i '' '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
+        else
+            echo "  sed -i '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
+        fi
+    else
+        warn "~/bin PATH entry not found in $CONFIG_FILE"
+    fi
 fi
 echo ""
 

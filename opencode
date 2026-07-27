@@ -17,25 +17,14 @@ directory mounted at /home/dev/workspace.
 
 Options:
   --help, -h       Show this help message
-  --uninstall      Run the uninstall script
 
 The container only sees your current project directory. Settings and
 auth tokens persist via Docker volumes.
 
 Install: ./install.sh
-Uninstall: ./uninstall.sh
+Uninstall: run ./uninstall.sh from the repo directory.
 EOF
     exit 0
-fi
-
-# Uninstall
-if [ "${1:-}" = "--uninstall" ]; then
-    if [ -f "$SCRIPT_DIR/uninstall.sh" ]; then
-        exec "$SCRIPT_DIR/uninstall.sh"
-    else
-        echo "Error: uninstall.sh not found in $SCRIPT_DIR"
-        exit 1
-    fi
 fi
 
 # Check for Docker or Podman
@@ -58,10 +47,11 @@ if ! $CONTAINER_CMD info >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check if image exists, build if not
+# Check if image exists
 if ! $CONTAINER_CMD image inspect local:opencode >/dev/null 2>&1; then
-    echo "Image not found. Building..."
-    $CONTAINER_CMD build -t local:opencode "$SCRIPT_DIR"
+    echo "Error: 'local:opencode' Docker image not found."
+    echo "Run './install.sh' from the opencode-sandbox repo directory to build it."
+    exit 1
 fi
 
 CWD="$(pwd)"
@@ -72,7 +62,7 @@ CWD="$(pwd)"
 ENV_FLAGS=(-e "TERM=${TERM:-xterm-256color}" -e COLORTERM=truecolor)
 
 $CONTAINER_CMD run --rm -it \
-  --name "opencode-$(basename "$CWD")-$$" \
+  --name "opencode-$(basename "$CWD" | tr -cd 'a-zA-Z0-9_-')-$$" \
   "${ENV_FLAGS[@]}" \
   -v opencode-config:/home/dev/.config/opencode \
   -v opencode-data:/home/dev/.local/share/opencode \

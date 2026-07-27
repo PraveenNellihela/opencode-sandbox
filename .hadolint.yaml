@@ -1,0 +1,6 @@
+---
+ignored:
+  - DL3059  # Multiple consecutive RUN: acceptable for conditional installs
+trustedRegistries:
+  - docker.io
+  - deb.nodesource.com
