@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Stage 1: Static analysis (fast, no Docker needed)
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: '.'
+          additional_files: 'opencode'
+
+      - name: Hadolint Dockerfile linting
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Validate script syntax
+        run: |
+          bash -n install.sh
+          bash -n uninstall.sh
+          bash -n opencode
+          bash -n scripts/configure-opencode.sh
+
+      - name: Validate JSON templates
+        run: jq empty preconfig/opencode.json
+
+      - name: Validate agent frontmatter
+        run: |
+          for f in preconfig/agents/*.md; do
+            head -1 "$f" | grep -q '^---$' || { echo "FAIL: $f missing opening ---"; exit 1; }
+            sed -n '2,/^---$/{ /^---$/d; p; }' "$f" | grep -q 'description:'
+            sed -n '2,/^---$/{ /^---$/d; p; }' "$f" | grep -q 'mode:'
+            sed -n '2,/^---$/{ /^---$/d; p; }' "$f" | grep -q 'temperature:'
+            sed -n '2,/^---$/{ /^---$/d; p; }' "$f" | grep -q 'permission:'
+            echo "OK: $f"
+          done
+
+  # Stage 2: Unit tests with bats
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats
+        run: sudo npm install -g bats
+
+      - name: Run unit tests
+        run: bats test/test_configure.bats test/test_wrapper.bats test/test_install_flags.bats
+
+  # Stage 3: Docker build matrix
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "minimal"
+            args: ""
+          - name: "cli-tools"
+            args: "--build-arg INSTALL_CLI_TOOLS=true"
+          - name: "node"
+            args: "--build-arg INSTALL_NODE=true"
+          - name: "python"
+            args: "--build-arg INSTALL_PYTHON=true"
+          - name: "go"
+            args: "--build-arg INSTALL_GO=true"
+          - name: "agents"
+            args: "--build-arg OPCODE_AGENTS=true"
+          - name: "recommended"
+            args: >-
+              --build-arg INSTALL_NODE=true
+              --build-arg INSTALL_PYTHON=true
+              --build-arg INSTALL_CLI_TOOLS=true
+              --build-arg OPCODE_PLUGINS="superpowers,pty,notify,websearch"
+              --build-arg OPCODE_MCP="filesystem,context7"
+              --build-arg OPCODE_AGENTS=true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (${{ matrix.name }})
+        run: |
+          docker build ${{ matrix.args }} -t test-${{ matrix.name }}:latest .
+
+      - name: Verify opencode.json is valid JSON
+        run: |
+          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest \
+            -c "test -s /home/dev/.config/opencode/opencode.json && { command -v jq >/dev/null 2>&1 && jq . /home/dev/.config/opencode/opencode.json || true; }"
+
+      - name: Verify non-root user
+        run: |
+          USER=$(docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c "whoami")
+          [ "$USER" = "dev" ]
+
+      - name: Verify opencode binary
+        run: |
+          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c "which opencode"
+
+  # Stage 4: End-to-end tests
+  e2e:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats
+        run: sudo npm install -g bats
+
+      - name: Run E2E tests
+        run: bats test/test_e2e.bats

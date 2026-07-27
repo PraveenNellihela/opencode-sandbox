@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        args: ["--severity=warning"]
+        files: \.(sh|bash)$
+        types: [text]
+        exclude_types: [markdown]
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.8.0
+    hooks:
+      - id: shfmt
+        args: ["-i", "4", "-bn"]

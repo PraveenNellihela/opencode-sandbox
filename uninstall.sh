@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
+# Colors for output — use bold variants to match install.sh
+RED='\033[1;31m'
+GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
@@ -12,7 +12,8 @@ warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 
 # Detect shell for PATH instructions
 detect_shell() {
-    local shell_name=$(basename "${SHELL:-/bin/bash}")
+    local shell_name
+    shell_name=$(basename "${SHELL:-/bin/bash}")
     case "$shell_name" in
         bash|zsh) echo "$shell_name";;
         fish)     echo "fish";;
@@ -20,7 +21,16 @@ detect_shell() {
     esac
 }
 
+# Detect OS for sed compatibility
+detect_os() {
+    case "$(uname -s)" in
+        Darwin*) echo "macos";;
+        *)       echo "linux";;
+    esac
+}
+
 SHELL_NAME=$(detect_shell)
+OS=$(detect_os)
 
 echo "opencode-sandbox uninstaller"
 echo "============================"
@@ -31,20 +41,36 @@ if [ -f "$HOME/bin/opencode" ]; then
     rm "$HOME/bin/opencode"
     info "Removed ~/bin/opencode"
 else
+    # shellcheck disable=SC2088
     warn "~/bin/opencode not found (already removed?)"
 fi
 
-# Print PATH removal instructions (never auto-edit rc files)
+# Print PATH removal command (user runs it themselves)
 echo ""
+CONFIG_FILE="${HOME}/.${SHELL_NAME}rc"
 if [ "$SHELL_NAME" = "fish" ]; then
-    echo "Run this command to remove ~/bin from your PATH:"
-    echo ""
-    echo "  fish_remove_path ~/bin"
+    if grep -q 'fish_add_path ~/bin' "$HOME/.config/fish/config.fish" 2>/dev/null; then
+        echo "Run this command to remove ~/bin from your PATH:"
+        echo ""
+        echo "  fish_remove_path ~/bin"
+    else
+        # shellcheck disable=SC2088
+        warn "~/bin not found in fish PATH config"
+    fi
 else
-    CONFIG_FILE="${HOME}/.${SHELL_NAME}rc"
-    echo "Run this command to remove ~/bin from your PATH:"
-    echo ""
-    echo "  sed -i '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
+    # shellcheck disable=SC2016
+    if grep -q 'export PATH="\$HOME/bin:\$PATH"' "$CONFIG_FILE" 2>/dev/null; then
+        echo "Run this command to remove ~/bin from your PATH:"
+        echo ""
+        if [ "$OS" = "macos" ]; then
+            echo "  sed -i '' '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
+        else
+            echo "  sed -i '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
+        fi
+    else
+        # shellcheck disable=SC2088
+        warn "~/bin PATH entry not found in $CONFIG_FILE"
+    fi
 fi
 echo ""
 
@@ -65,7 +91,7 @@ fi
 
 if [ -n "$VOLUMES" ]; then
     echo "Found opencode data volumes:"
-    echo "$VOLUMES" | while read vol; do
+    echo "$VOLUMES" | while read -r vol; do
         case "$vol" in
             opencode-config) echo "  - $vol (settings, plugins)";;
             opencode-data)   echo "  - $vol (auth tokens, sessions)";;
