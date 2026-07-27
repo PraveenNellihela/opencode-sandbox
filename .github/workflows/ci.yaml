@@ -97,17 +97,17 @@ jobs:
 
       - name: Verify opencode.json is valid JSON
         run: |
-          docker run --rm test-${{ matrix.name }}:latest \
-            jq . /home/dev/.config/opencode/opencode.json
+          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest \
+            -c "jq . /home/dev/.config/opencode/opencode.json"
 
       - name: Verify non-root user
         run: |
-          USER=$(docker run --rm test-${{ matrix.name }}:latest whoami)
+          USER=$(docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c "whoami")
           [ "$USER" = "dev" ]
 
       - name: Verify opencode binary
         run: |
-          docker run --rm test-${{ matrix.name }}:latest which opencode
+          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c "which opencode"
 
   # Stage 4: End-to-end tests
   e2e:
