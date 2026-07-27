@@ -1,4 +1,5 @@
 FROM ubuntu:24.04
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ── Build arguments (all optional, default to no extras) ─────
@@ -42,7 +43,7 @@ RUN if [ "$INSTALL_CLI_TOOLS" = "true" ]; then \
 # ── Optional: Node.js (LTS) ──────────────────────────────────
 RUN if [ "$INSTALL_NODE" = "true" ]; then \
       curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-      && apt-get install -y nodejs; \
+      && apt-get install -y --no-install-recommends nodejs; \
     fi
 
 # ── Optional: Python 3 ───────────────────────────────────────

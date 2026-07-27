@@ -25,8 +25,12 @@ setup() {
 
 @test "minimal output matches golden file" {
     run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
-    run diff <(jq -S . "$TEST_CONFIG_DIR/opencode.json") test/fixtures/golden_minimal.json
     [ "$status" -eq 0 ]
+    run jq -S . "$TEST_CONFIG_DIR/opencode.json"
+    [ "$status" -eq 0 ]
+    local expected
+    expected="$(jq -S . test/fixtures/golden_minimal.json)"
+    [ "$output" = "$expected" ]
 }
 
 # ── Plugin injection ─────────────────────────────────────────
@@ -87,8 +91,9 @@ setup() {
     [[ "$output" == *"debugger.md"* ]]
     [[ "$output" == *"documenter.md"* ]]
     [[ "$output" == *"tester.md"* ]]
-    run ls "$TEST_CONFIG_DIR/agents/"*.md 2>/dev/null | wc -l
-    [ "${output// /}" -eq 6 ]
+    local count
+    count=$(ls "$TEST_CONFIG_DIR/agents/"*.md 2>/dev/null | wc -l)
+    [ "${count// /}" -eq 6 ]
 }
 
 @test "does NOT seed agents when OPCODE_AGENTS=false" {

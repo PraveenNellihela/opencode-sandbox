@@ -21,9 +21,15 @@ setup() {
 }
 
 @test "errors when docker/podman not available" {
-    run env PATH="/usr/bin:/bin" ./install.sh 2>&1
+    local restricted_path
+    restricted_path="$(mktemp -d)"
+    for cmd in bash env uname basename cut; do
+        ln -sf "$(command -v "$cmd")" "$restricted_path/"
+    done
+    run env PATH="$restricted_path" ./install.sh 2>&1
     [ "$status" -eq 1 ]
     [[ "$output" == *"Neither Docker nor Podman found"* ]]
+    rm -rf "$restricted_path"
 }
 
 @test "-R prints recommended build configuration" {
