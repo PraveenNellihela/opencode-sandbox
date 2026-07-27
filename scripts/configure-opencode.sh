@@ -45,6 +45,7 @@ if [ -n "$OPCODE_PLUGINS" ]; then
   # Use jq if available, otherwise sed
   if command -v jq &>/dev/null; then
     tmp=$(mktemp)
+    # shellcheck disable=SC2015
     jq --argjson plugins "[$PLUGIN_JSON]" '.plugin = $plugins' "$JSON_FILE" > "$tmp" \
       && mv "$tmp" "$JSON_FILE" \
       || rm -f "$tmp"
@@ -77,6 +78,7 @@ if [ -n "$OPCODE_MCP" ]; then
   done
   if command -v jq &>/dev/null; then
     tmp=$(mktemp)
+    # shellcheck disable=SC2015
     jq --argjson mcp "{$MCP_JSON}" '.mcp = $mcp' "$JSON_FILE" > "$tmp" \
       && mv "$tmp" "$JSON_FILE" \
       || rm -f "$tmp"

@@ -159,7 +159,8 @@ detect_os() {
 }
 
 detect_shell() {
-    local shell_name=$(basename "${SHELL:-/bin/bash}")
+    local shell_name
+    shell_name=$(basename "${SHELL:-/bin/bash}")
     case "$shell_name" in
         bash) echo "bash ~/.bashrc";;
         zsh)  echo "zsh ~/.zshrc";;
@@ -231,8 +232,10 @@ echo ""
 # Create ~/bin if needed (we need it after build to install the wrapper)
 if [ ! -d "$HOME/bin" ]; then
     mkdir -p "$HOME/bin"
+    # shellcheck disable=SC2088
     info "Created ~/bin"
 else
+    # shellcheck disable=SC2088
     info "~/bin already exists"
 fi
 
@@ -269,14 +272,19 @@ info "Installed wrapper to ~/bin/opencode"
 if [ "$SHELL_NAME" = "fish" ]; then
     FISH_CONFIG="$HOME/.config/fish/config.fish"
     if grep -q 'fish_add_path ~/bin' "$FISH_CONFIG" 2>/dev/null; then
+        # shellcheck disable=SC2088
         info "~/bin already in fish PATH config"
     else
+        # shellcheck disable=SC2088
         warn "~/bin not in fish PATH config"
     fi
 else
+    # shellcheck disable=SC2016
     if grep -q 'export PATH="\$HOME/bin:\$PATH"' "$CONFIG_FILE" 2>/dev/null; then
+        # shellcheck disable=SC2088
         info "~/bin already in $CONFIG_FILE"
     else
+        # shellcheck disable=SC2088
         warn "~/bin not in $CONFIG_FILE"
     fi
 fi
@@ -295,6 +303,7 @@ if [ "$SHELL_NAME" = "fish" ]; then
         echo ""
     fi
 else
+        # shellcheck disable=SC2016
         if ! grep -q 'export PATH="\$HOME/bin:\$PATH"' "$CONFIG_FILE" 2>/dev/null; then
             echo "Run this command to add ~/bin to your PATH:"
             echo ""

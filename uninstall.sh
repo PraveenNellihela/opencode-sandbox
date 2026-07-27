@@ -12,7 +12,8 @@ warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 
 # Detect shell for PATH instructions
 detect_shell() {
-    local shell_name=$(basename "${SHELL:-/bin/bash}")
+    local shell_name
+    shell_name=$(basename "${SHELL:-/bin/bash}")
     case "$shell_name" in
         bash|zsh) echo "$shell_name";;
         fish)     echo "fish";;
@@ -40,6 +41,7 @@ if [ -f "$HOME/bin/opencode" ]; then
     rm "$HOME/bin/opencode"
     info "Removed ~/bin/opencode"
 else
+    # shellcheck disable=SC2088
     warn "~/bin/opencode not found (already removed?)"
 fi
 
@@ -52,9 +54,11 @@ if [ "$SHELL_NAME" = "fish" ]; then
         echo ""
         echo "  fish_remove_path ~/bin"
     else
+        # shellcheck disable=SC2088
         warn "~/bin not found in fish PATH config"
     fi
 else
+    # shellcheck disable=SC2016
     if grep -q 'export PATH="\$HOME/bin:\$PATH"' "$CONFIG_FILE" 2>/dev/null; then
         echo "Run this command to remove ~/bin from your PATH:"
         echo ""
@@ -64,6 +68,7 @@ else
             echo "  sed -i '/export PATH=\"\\\$HOME\\/bin:\\\$PATH\"/d' $CONFIG_FILE"
         fi
     else
+        # shellcheck disable=SC2088
         warn "~/bin PATH entry not found in $CONFIG_FILE"
     fi
 fi
@@ -86,7 +91,7 @@ fi
 
 if [ -n "$VOLUMES" ]; then
     echo "Found opencode data volumes:"
-    echo "$VOLUMES" | while read vol; do
+    echo "$VOLUMES" | while read -r vol; do
         case "$vol" in
             opencode-config) echo "  - $vol (settings, plugins)";;
             opencode-data)   echo "  - $vol (auth tokens, sessions)";;

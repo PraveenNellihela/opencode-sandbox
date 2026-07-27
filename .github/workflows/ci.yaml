@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install bats
-        run: npm install -g bats
+        run: sudo npm install -g bats
 
       - name: Run unit tests
         run: bats test/test_configure.bats test/test_wrapper.bats test/test_install_flags.bats
@@ -117,7 +117,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install bats
-        run: npm install -g bats
+        run: sudo npm install -g bats
 
       - name: Run E2E tests
         run: bats test/test_e2e.bats
