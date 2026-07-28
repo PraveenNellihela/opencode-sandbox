@@ -1,15 +1,35 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/opencode-sandbox-light.png">
   <source media="(prefers-color-scheme: light)" srcset="docs/opencode-sandbox-dark.png">
-  <img alt="opencode-sandbox" src="docs/opencode-sandbox-dark.png" width="380" style="margin: -40px 0 -80px 0;">
+  <img alt="opencode-sandbox logo — isolated Docker sandbox for running opencode AI coding agent" src="docs/opencode-sandbox-dark.png" width="380" style="margin: -40px 0 -80px 0;">
 </picture>
 
 # opencode-sandbox
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/PraveenNellihela/opencode-sandbox/actions/workflows/ci.yaml/badge.svg)](https://github.com/PraveenNellihela/opencode-sandbox/actions)
 [![Docker](https://img.shields.io/badge/docker-%3E%3D20.10-blue?logo=docker)](https://docs.docker.com/get-docker/)
+[![Platform](https://img.shields.io/badge/platform-linux%20|%20macOS%20|%20wsl2-lightgrey?logo=linux)](https://github.com/PraveenNellihela/opencode-sandbox)
 
-Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS — Linux, macOS, or Windows (WSL2). Install once, use from any project directory.
+Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS. Free models, no token limits, your host stays protected.
+
+## Why sandbox opencode?
+
+opencode is a powerful, free AI coding agent — but giving any AI CLI access
+to your entire filesystem is a genuine security risk. Prompt injections in
+dependencies, malicious code in repos you ask it to review, or simple bugs
+could expose your whole machine. Paid AI coding tools often lock you into
+token limits and expiring usage windows. opencode-sandbox fixes all of this.
+
+| Benefit | What it means for you |
+|---------|----------------------|
+| **🔒 Host isolation** | The AI only sees your current project directory. SSH keys, browser data, dotfiles, and other repos stay off-limits. |
+| **🛡️ Non-root by default** | Runs as a dedicated `dev` user with no `sudo`. Even a compromised agent can't escalate to your host. |
+| **💸 Free, capable models** | opencode includes free models (DeepSeek V4 Flash, Big Pickle, etc.) that are genuinely useful for everyday coding — this entire repo was built with them. No monthly subscription needed. |
+| **⏱️ No token limits** | Unlike Claude Code's paid tokens that expire, you use models on your terms. Pay only if you choose a premium provider. |
+| **📦 Identical everywhere** | The same Docker image behaves identically on Linux, macOS, and Windows (WSL2). No "works on my machine." |
+| **🔄 Smart persistence** | Auth tokens, plugins, and config survive restarts via Docker volumes. System packages reset cleanly each session. |
+| **⚙️ Reproducible toolchains** | Node.js, Python, Go, CLI tools — pre-installed at build time, not ad-hoc `apt-get`. Teammates get identical environments. |
 
 ## Quick Start
 
