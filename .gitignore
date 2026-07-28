@@ -1,0 +1,14 @@
+# Editor artifacts
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+.vscode/
+
+# Build / test artifacts
+*.log
+node_modules/
+
+# OS metadata
+Thumbs.db

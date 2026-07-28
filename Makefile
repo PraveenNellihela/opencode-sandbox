@@ -33,6 +33,8 @@ test-lint:      ## Run static analysis (shellcheck, hadolint, bash -n, JSON vali
 		head -1 "$$f" | grep -q '^---$$' || { echo "FAIL: $$f missing opening ---"; exit 1; }; \
 		sed -n '2,/^---$$/{ /^---$$/d; p; }' "$$f" | grep -q 'description:' || { echo "FAIL: $$f missing description"; exit 1; }; \
 		sed -n '2,/^---$$/{ /^---$$/d; p; }' "$$f" | grep -q 'mode:' || { echo "FAIL: $$f missing mode"; exit 1; }; \
+		sed -n '2,/^---$$/{ /^---$$/d; p; }' "$$f" | grep -q 'temperature:' || { echo "FAIL: $$f missing temperature"; exit 1; }; \
+		sed -n '2,/^---$$/{ /^---$$/d; p; }' "$$f" | grep -q 'permission:' || { echo "FAIL: $$f missing permission"; exit 1; }; \
 		echo "  OK: $$f"; \
 	done
 	@echo "All lint checks passed."
@@ -72,4 +74,4 @@ lint-docker:    ## Run hadolint on Dockerfile
 	fi
 
 clean:          ## Clean up test artifacts
-	-docker rmi opencode-test:latest 2>/dev/null || true
+	-docker rmi test-minimal:latest test-recommended:latest 2>/dev/null || true
