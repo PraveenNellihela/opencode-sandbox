@@ -59,6 +59,38 @@ setup() {
     [ "$output" -eq 2 ]
 }
 
+@test "impeccable is not injected as an opencode plugin (it is a skill)" {
+    export OPCODE_PLUGINS="impeccable"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    run jq '.plugin | length' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$output" -eq 0 ]
+}
+
+@test "impeccable does not break other plugin injections" {
+    export OPCODE_PLUGINS="impeccable,pty"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    run jq '.plugin | length' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$output" -eq 1 ]
+}
+
+@test "emil is not injected as an opencode plugin (it is a skill collection)" {
+    export OPCODE_PLUGINS="emil"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    run jq '.plugin | length' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$output" -eq 0 ]
+}
+
+@test "emil does not break other plugin injections" {
+    export OPCODE_PLUGINS="emil,pty"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    run jq '.plugin | length' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$output" -eq 1 ]
+}
+
 # ── MCP injection ────────────────────────────────────────────
 
 @test "injects filesystem MCP" {

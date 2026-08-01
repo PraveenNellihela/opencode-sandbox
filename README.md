@@ -13,6 +13,8 @@
 
 Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS. Free models, no token limits, your host stays protected.
 
+> **Not affiliated with OpenCode.** This project is community-built and is not created by, endorsed by, or affiliated with the OpenCode team in any way. See the [Building on OpenCode](https://github.com/anomalyco/opencode#building-on-opencode) note in the OpenCode README.
+
 ## Why sandbox opencode?
 
 opencode is a powerful, free AI coding agent — but giving any AI CLI access
@@ -54,9 +56,9 @@ Pass flags to `install.sh` to pre-install toolchains, agents, plugins, and MCP s
 
 | Flag | Description |
 |------|-------------|
-| `-R, --recommended` | Full power-up (Node.js + Python + CLI tools + superpowers + plugins + MCP + agents) |
+| `-R, --recommended` | Full power-up (Node.js + Python + CLI tools + superpowers + plugins + MCP + agents + impeccable + emil) |
 | `-t, --toolchain LIST` | Comma-separated: `node,python,go,cli` |
-| `-p, --plugin LIST` | Comma-separated: `superpowers,pty,notify,websearch,mcp-tool-search` |
+| `-p, --plugin LIST` | Comma-separated: `superpowers,pty,notify,websearch,mcp-tool-search,impeccable,emil` |
 | `-m, --mcp LIST` | Comma-separated: `filesystem,context7,brave-search,github` |
 | `-a, --agents` | Include 6 pre-built subagents (code-reviewer, security-analyst, debugger, documenter, tester, planner) |
 | `-i, --interactive` | Interactive prompts for selections |
@@ -82,6 +84,7 @@ Examples:
 ```
 Toolchains: Node.js + Python 3 + ripgrep + fd-find + jq + tmux
 Plugins:    superpowers + opencode-pty + opencode-notify + opencode-websearch-cited
+Skills:     impeccable (design) + emil (8 animation/design skills)
 MCP:        filesystem + Context7
 Agents:     code-reviewer, security-analyst, debugger, documenter, tester, planner
 ```
@@ -224,6 +227,23 @@ This seeds them into the `opencode.json` that ships with the image. Available pl
 - `notify` — [opencode-notify](https://github.com/opencode-notify): desktop notifications on task completion
 - `websearch` — [opencode-websearch-cited](https://github.com/ghoulr/opencode-websearch-cited): web search with citations
 - `mcp-tool-search` — [opencode-mcp-tool-search](https://github.com/francisco-m001/opencode-mcp-tool-search): reduces context bloat from MCP servers
+- `impeccable` — [impeccable.style](https://impeccable.style): design skill with 23 commands (`/impeccable polish`, `/audit`, `/typeset`, …) and 59 slop-detector rules. Seeded as a global skill and runs in the `build` agent; its scripts (live mode, detector) require Node.js, which is enabled automatically. Invoke it with `/impeccable <command>`.
+- `emil` — [emilkowal.ski/skill](https://emilkowal.ski/skill): 8 skills from Emil Kowalski's design-engineering philosophy, focused on motion craft (easing curves, spring physics, durations) plus taste and prototyping. All pure markdown — no runtime dependencies. Skills: `emil-design-eng`, `review-animations`, `improve-animations`, `find-animation-opportunities`, `animation-vocabulary`, `apple-design`, `pick-ui-library`, `prototype`.
+
+### Third-party licenses
+
+The skills above are independent third-party projects maintained by their own
+authors, not by this project. Their license files ship inside the Docker image
+next to the seeded skills (`~/.config/opencode/skills/`):
+
+| Skill | Project | License | Copyright |
+|-------|---------|---------|-----------|
+| `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | Apache-2.0 | © Paul Bakaus |
+| `emil` | [emilkowalski/skills](https://github.com/emilkowalski/skills) | MIT | © Emil Kowalski |
+
+Only permissively-licensed (MIT, Apache-2.0, BSD, ISC, CC0) third-party
+integrations are accepted into this project. Copyleft, non-commercial, or
+unlicensed integrations are rejected.
 
 ### Inside the container (persistent)
 

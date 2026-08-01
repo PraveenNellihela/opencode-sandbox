@@ -81,8 +81,60 @@ ENV OPCODE_MCP=$OPCODE_MCP
 ENV OPCODE_AGENTS=$OPCODE_AGENTS
 RUN bash /home/dev/.tmp/configure-opencode.sh /home/dev/.config/opencode /home/dev/.tmp/preconfig && rm -rf /home/dev/.tmp
 
+# ── Install impeccable design skill (optional) ───────────────
+# Seeded as a global opencode skill (~/.config/opencode/skills/) when
+# requested via OPCODE_PLUGINS=impeccable. Sparse checkout with blob
+# filtering keeps this layer small (upstream repo is ~340MB).
+RUN if [[ "$OPCODE_PLUGINS" == *impeccable* ]]; then \
+      for i in 1 2 3; do \
+        if git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/pbakaus/impeccable.git /tmp/impeccable; then \
+          break; \
+        fi; \
+        echo "impeccable clone attempt $i failed, retrying in 5s..." >&2; \
+        sleep 5; \
+        rm -rf /tmp/impeccable; \
+      done; \
+      git -C /tmp/impeccable sparse-checkout set .opencode LICENSE NOTICE.md --skip-checks \
+      && mkdir -p /home/dev/.config/opencode/skills \
+      && cp -r /tmp/impeccable/.opencode/skills/impeccable /home/dev/.config/opencode/skills/ \
+      && cp /tmp/impeccable/LICENSE /tmp/impeccable/NOTICE.md /home/dev/.config/opencode/skills/impeccable/ \
+      && rm -rf /tmp/impeccable; \
+    fi
+
+# ── Install Emil Kowalski's design skills (optional) ─────────
+# Seeded as global opencode skills when requested via
+# OPCODE_PLUGINS=emil. Pure markdown, tiny repo (~60KB), so a
+# plain shallow clone suffices.
+RUN if [[ "$OPCODE_PLUGINS" == *emil* ]]; then \
+      for i in 1 2 3; do \
+        if git clone --depth 1 \
+            https://github.com/emilkowalski/skills.git /tmp/emil-skills; then \
+          break; \
+        fi; \
+        echo "emil skills clone attempt $i failed, retrying in 5s..." >&2; \
+        sleep 5; \
+        rm -rf /tmp/emil-skills; \
+      done; \
+      mkdir -p /home/dev/.config/opencode/skills \
+      && cp -r /tmp/emil-skills/skills/* /home/dev/.config/opencode/skills/ \
+      && cp /tmp/emil-skills/LICENSE /home/dev/.config/opencode/skills/LICENSE-emil-skills \
+      && rm -rf /tmp/emil-skills; \
+    fi
+
 # ── Install opencode ─────────────────────────────────────────
-RUN curl -fsSL https://opencode.ai/install | bash
+# The release binary download from GitHub occasionally fails with a
+# transient "connection reset" (curl exit 35) in CI, so retry the
+# whole install (which is idempotent via its version check).
+RUN for i in 1 2 3 4 5; do \
+      if curl -fsSL https://opencode.ai/install | bash; then \
+        exit 0; \
+      fi; \
+      echo "opencode install attempt $i failed, retrying in 10s..." >&2; \
+      sleep 10; \
+    done; \
+    echo "opencode install failed after 5 attempts" >&2; \
+    exit 1
 ENV PATH="/home/dev/.opencode/bin:${PATH}"
 
 ENTRYPOINT ["opencode"]

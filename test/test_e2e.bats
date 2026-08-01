@@ -35,10 +35,24 @@ setup() {
         --build-arg INSTALL_NODE=true \
         --build-arg INSTALL_PYTHON=true \
         --build-arg INSTALL_CLI_TOOLS=true \
-        --build-arg OPCODE_PLUGINS="superpowers,pty,notify,websearch" \
+        --build-arg OPCODE_PLUGINS="superpowers,pty,notify,websearch,impeccable,emil" \
         --build-arg OPCODE_MCP="filesystem,context7" \
         --build-arg OPCODE_AGENTS=true \
         -f Dockerfile .
+    [ "$status" -eq 0 ]
+}
+
+@test "recommended image has impeccable skill" {
+    if ! has_docker; then skip "Docker not available"; fi
+    run docker run --rm --entrypoint /bin/sh test-recommended:latest \
+        -c "test -f /home/dev/.config/opencode/skills/impeccable/SKILL.md"
+    [ "$status" -eq 0 ]
+}
+
+@test "recommended image has emil skills" {
+    if ! has_docker; then skip "Docker not available"; fi
+    run docker run --rm --entrypoint /bin/sh test-recommended:latest \
+        -c "test -f /home/dev/.config/opencode/skills/emil-design-eng/SKILL.md"
     [ "$status" -eq 0 ]
 }
 

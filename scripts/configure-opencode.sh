@@ -40,6 +40,15 @@ if [ -n "$OPCODE_PLUGINS" ]; then
             mcp-tool-search)
                 PLUGIN_JSON="${PLUGIN_JSON}${PLUGIN_JSON:+,}\"opencode-mcp-tool-search\""
                 ;;
+            impeccable)
+                # Design skill, not an opencode.json plugin — installed
+                # separately by the Dockerfile into the skills directory.
+                ;;
+            emil)
+                # Design skills (emilkowalski/skills), not opencode.json
+                # plugins — installed by the Dockerfile into the skills
+                # directory.
+                ;;
         esac
     done
     # Use jq if available, otherwise sed
