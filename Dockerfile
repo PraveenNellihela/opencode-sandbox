@@ -40,7 +40,12 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
 # ── Optional: CLI productivity tools ─────────────────────────
-RUN if [ "$INSTALL_CLI_TOOLS" = "true" ]; then \
+# Mounts the same apt caches as the base layer: the index written by the
+# base layer's apt-get update lives in the cache mount, not the layer, so
+# installs must mount it too or the lists are empty.
+RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    if [ "$INSTALL_CLI_TOOLS" = "true" ]; then \
       apt-get install -y --no-install-recommends \
         ripgrep \
         fd-find \
@@ -64,7 +69,9 @@ RUN if [ "$INSTALL_NODE" = "true" ]; then \
     fi
 
 # ── Optional: Python 3 ───────────────────────────────────────
-RUN if [ "$INSTALL_PYTHON" = "true" ]; then \
+RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    if [ "$INSTALL_PYTHON" = "true" ]; then \
       apt-get install -y --no-install-recommends \
         python3 \
         python3-pip \
