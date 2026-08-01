@@ -11,24 +11,25 @@
 [![Docker](https://img.shields.io/badge/docker-%3E%3D20.10-blue?logo=docker)](https://docs.docker.com/get-docker/)
 [![Platform](https://img.shields.io/badge/platform-linux%20|%20macOS%20|%20wsl2-lightgrey?logo=linux)](https://github.com/PraveenNellihela/opencode-sandbox)
 
-Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS. Free models, no token limits, your host stays protected.
+Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS. Free model options included, your host stays protected.
 
 > **Not affiliated with OpenCode.** This project is community-built and is not created by, endorsed by, or affiliated with the OpenCode team in any way. See the [Building on OpenCode](https://github.com/anomalyco/opencode#building-on-opencode) note in the OpenCode README.
 
 ## Why sandbox opencode?
 
-opencode is a powerful, free AI coding agent — but giving any AI CLI access
-to your entire filesystem is a genuine security risk. Prompt injections in
+opencode is a powerful, open-source AI coding agent. It offers free-tier
+models (free for a limited time while the OpenCode team improves them) and
+optional pay-as-you-go premium models — but giving any AI CLI access to your
+entire filesystem is a genuine security risk. Prompt injections in
 dependencies, malicious code in repos you ask it to review, or simple bugs
-could expose your whole machine. Paid AI coding tools often lock you into
-token limits and expiring usage windows. opencode-sandbox fixes all of this.
+could expose your whole machine. opencode-sandbox fixes all of this.
 
 | Benefit | What it means for you |
 |---------|----------------------|
 | **🔒 Host isolation** | The AI only sees your current project directory. SSH keys, browser data, dotfiles, and other repos stay off-limits. |
 | **🛡️ Non-root by default** | Runs as a dedicated `dev` user with no `sudo`. Even a compromised agent can't escalate to your host. |
-| **💸 Free, capable models** | opencode includes free models (DeepSeek V4 Flash, Big Pickle, etc.) that are genuinely useful for everyday coding — this entire repo was built with them. No monthly subscription needed. |
-| **⏱️ No token limits** | Unlike Claude Code's paid tokens that expire, you use models on your terms. Pay only if you choose a premium provider. |
+| **💸 Free, capable models** | opencode includes free-tier models (DeepSeek V4 Flash Free, Big Pickle, etc.) that are genuinely useful for everyday coding — this entire repo was built with them. No subscription needed. Free models are a limited-time offer and may use your prompts to improve the model — see [Privacy notes](#privacy-and-data-handling). |
+| **⏱️ No subscription windows** | Premium models are pay-as-you-go (per token, with optional monthly caps); free-tier models cost $0 while they are offered. You pay only if you choose a premium provider. |
 | **📦 Identical everywhere** | The same Docker image behaves identically on Linux, macOS, and Windows (WSL2). No "works on my machine." |
 | **🔄 Smart persistence** | Auth tokens, plugins, and config survive restarts via Docker volumes. System packages reset cleanly each session. |
 | **⚙️ Reproducible toolchains** | Node.js, Python, Go, CLI tools — pre-installed at build time, not ad-hoc `apt-get`. Teammates get identical environments. |
@@ -257,6 +258,8 @@ Fetch and follow instructions from https://raw.githubusercontent.com/obra/superp
 
 To edit the generated config after the container is running, open the TUI and use opencode's config commands, or edit `~/.config/opencode/opencode.json` directly on the host (it's stored in the Docker volume).
 
+> **No warranty.** Provided as-is under the MIT License. The AI agent can make mistakes — or worse, follow malicious instructions — so you use it at your own risk; the authors are not liable for any damage. Follow security best practices: don't grant the container more access than it needs, don't paste secrets or sensitive data into prompts, and keep the image and opencode updated.
+
 ## Security Model
 
 - **Non-root:** Container runs as `dev` user with no sudo.
@@ -264,6 +267,16 @@ To edit the generated config after the container is running, open the TUI and us
 - **Network:** Default bridge networking — can reach internet (for LLM APIs) but nothing on host is exposed.
 
 If you need live root for something, that's a signal to add it to the Dockerfile and rebuild, not to grant privilege escalation.
+
+### Privacy and data handling
+
+The sandbox isolates your **host**, not your **code**: anything you ask a cloud LLM leaves your machine and is processed by that model's provider under its own policies. What that means for opencode's built-in models (via [OpenCode Zen](https://opencode.ai/docs/zen/#privacy)):
+
+- **Free-tier models** (DeepSeek V4 Flash Free, Big Pickle, MiMo-V2.5 Free, etc.) are free for a limited time while the OpenCode team collects feedback, and data collected during that period may be used to improve the models.
+- **Trial endpoints** (North Mini Code Free, Nemotron 3 Ultra Free) are trial-use only — do not submit personal or confidential data.
+- **Paid models** use zero-retention providers; OpenAI and Anthropic API requests are retained for 30 days.
+
+For confidential code, use your own API key with a provider you trust, or disable the data-collecting models in your Zen workspace. The sandbox never intercepts or stops prompts from reaching your chosen model provider.
 
 ### Using Podman instead of Docker
 
