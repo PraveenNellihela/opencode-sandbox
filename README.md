@@ -32,7 +32,7 @@ could expose your whole machine. opencode-sandbox fixes all of this.
 | **⏱️ No subscription windows** | Premium models are pay-as-you-go (per token, with optional monthly caps); free-tier models cost $0 while they are offered. You pay only if you choose a premium provider. |
 | **📦 Identical everywhere** | The same Docker image behaves identically on Linux, macOS, and Windows (WSL2). No "works on my machine." |
 | **🔄 Smart persistence** | Auth tokens, plugins, and config survive restarts via Docker volumes. System packages reset cleanly each session. |
-| **⚙️ Reproducible toolchains** | Node.js, Python, Go, CLI tools — pre-installed at build time, not ad-hoc `apt-get`. Teammates get identical environments. |
+| **⚙️ Reproducible toolchains** | Node.js, Python, and CLI tools are baked into the image; anything else (Rust, Go, Java, …) installs via [mise](https://mise.jdx.dev) at runtime. Teammates get identical environments. |
 
 ## Quick Start
 
@@ -41,15 +41,30 @@ could expose your whole machine. opencode-sandbox fixes all of this.
 git clone https://github.com/PraveenNellihela/opencode-sandbox.git
 cd opencode-sandbox
 
-# 2. Run the installer (detects OS, builds Docker image, copies wrapper to ~/bin/)
-./install.sh
+# 2. Run the installer (detects OS, fetches the prebuilt image, installs the wrapper)
+./install.sh --recommended
 
 # 3. Use opencode, it runs inside Docker, bind-mounted to current directory
 cd ~/code/my-project
 opencode
 ```
 
-The installer detects your OS and shell, copies the wrapper to `~/bin/`, and builds the Docker image. You may need to add `~/bin` to your PATH (the installer will tell you if so).
+The installer detects your OS and shell, copies the wrapper to `~/bin/`, and
+fetches a prebuilt Docker image (a few minutes). Custom flag combinations are
+built locally instead. You may need to add `~/bin` to your PATH (the installer
+will tell you if so).
+
+### First session
+
+1. Run `opencode` in a project directory.
+2. Run `/connect` inside opencode and pick a provider. **Free models**
+   (e.g. DeepSeek V4 Flash Free, Big Pickle) are available via OpenCode Zen —
+   the seeded default model is `opencode/deepseek-v4-flash-free`.
+3. Run `/models` to see what's available, and `/help` for commands.
+
+Your auth tokens and settings persist in Docker volumes, so you only do this
+once. See [Privacy and data handling](#privacy-and-data-handling) for how
+free-tier models treat your data.
 
 ### Customizing Your Build
 
@@ -57,37 +72,45 @@ Pass flags to `install.sh` to pre-install toolchains, agents, plugins, and MCP s
 
 | Flag | Description |
 |------|-------------|
-| `-R, --recommended` | Full power-up (Node.js + Python + CLI tools + superpowers + plugins + MCP + agents + impeccable + emil) |
-| `-t, --toolchain LIST` | Comma-separated: `node,python,go,cli` |
+| `-R, --recommended` | Full power-up (Node.js + Python + CLI tools + superpowers + plugins + MCP + agents + impeccable + emil) — fetches the prebuilt image |
+| `-t, --toolchain LIST` | Comma-separated: `node,python,cli` |
 | `-p, --plugin LIST` | Comma-separated: `superpowers,pty,notify,websearch,mcp-tool-search,impeccable,emil` |
 | `-m, --mcp LIST` | Comma-separated: `filesystem,context7,brave-search,github` |
 | `-a, --agents` | Include 6 pre-built subagents (code-reviewer, security-analyst, debugger, documenter, tester, planner) |
 | `-i, --interactive` | Interactive prompts for selections |
+| `-u, --update` | Re-fetch the latest image and re-seed config (non-destructive) |
+| `-b, --build` | Force a local image build instead of pulling a prebuilt one |
+| `-h, --help` | Show help |
 
 Examples:
 
 ```sh-session
-# Minimal (default — same as original)
+# Pull the prebuilt minimal image (fast install)
 ./install.sh
 
-# Full power-up with all extras
+# Full power-up with all extras (pulls the prebuilt recommended image)
 ./install.sh --recommended
 
-# Custom: Node.js + CLI tools + superpowers + agents only
+# Custom: Node.js + CLI tools + superpowers + agents only (builds locally)
 ./install.sh -t node,cli -p superpowers -a
 
 # Interactive mode
 ./install.sh -i
+
+# Refresh to the latest image and re-seed config
+./install.sh --update
 ```
 
 ### What --recommended Includes
 
 ```
-Toolchains: Node.js + Python 3 + ripgrep + fd-find + jq + tmux
+Toolchains: Node.js + Python 3 + ripgrep + fd-find + tmux (+ jq in the base image)
+Runtime:    mise (universal version manager — install any other language at runtime)
 Plugins:    superpowers + opencode-pty + opencode-notify + opencode-websearch-cited
 Skills:     impeccable (design) + emil (8 animation/design skills)
 MCP:        filesystem + Context7
 Agents:     code-reviewer, security-analyst, debugger, documenter, tester, planner
+Default:    model = opencode/deepseek-v4-flash-free (free tier via OpenCode Zen)
 ```
 
 ### Pre-Built Subagents
@@ -108,32 +131,36 @@ When `-a` or `--recommended` is used, 6 specialist subagents are seeded into `~/
 If you want to wipe the seeded config and start fresh:
 
 ```sh-session
-# Remove the stored volumes (settings, plugins, auth tokens)
-docker volume rm opencode-config opencode-data
+# Remove the stored volumes (settings, plugins, auth tokens, toolchains)
+docker volume rm opencode-config opencode-data opencode-tools
 
-# Rebuild with your chosen options
+# Reinstall with your chosen options
 ./install.sh --recommended
 ```
 
-Otherwise, existing volume data is preserved on rebuild (only empty volumes get seeded).
+Otherwise, existing volume data is preserved on reinstall. Re-running
+`install.sh` merges new defaults into your config without overwriting your
+edits (version-stamped, see [How It Works](#how-it-works)).
 
 ## How It Works
 
 - **Isolated:** Container only sees the current project directory (bind mount). Not your home directory, not other repos, not host processes.
-- **Persistent:** Settings and auth tokens survive container restarts via Docker volumes.
-- **Secure:** Runs as non-root user with no sudo. Docker networking only.
+- **Persistent:** Settings, auth tokens, and runtime-installed toolchains survive container restarts via Docker volumes.
+- **Secure:** Runs as non-root user with no sudo, all capabilities dropped, `no-new-privileges` enforced. Docker networking only.
 
 ## What Persists vs. What Doesn't
 
 **Persists** (Docker volumes):
-- `~/.config/opencode` — settings, plugins
+- `~/.config/opencode` — settings, plugins, skills
 - `~/.local/share/opencode` — auth tokens, session data
+- `~/.mise` — toolchains installed at runtime via [mise](#adding-dependencies)
 
 **Does not persist** (lost when container exits):
 - OS-level packages installed during a session
 - Any changes outside the above directories
 
-If you need a package (e.g., Node.js for a plugin), add it to the `Dockerfile` and rebuild.
+To add a toolchain that isn't in the image, install it in user space with
+`mise` (persists in the `opencode-tools` volume) — no rebuild needed.
 
 ## Cross-Platform
 
@@ -177,25 +204,42 @@ To remove after uninstalling:
 
 ## Adding Dependencies
 
-System packages can be added in two ways:
+### At runtime with mise (recommended, no rebuild)
 
-### At build time (recommended)
+The image includes [mise](https://mise.jdx.dev) (MIT), a universal version
+manager that installs toolchains in **user space** — no root needed, and they
+persist across container restarts in the `opencode-tools` volume:
 
-Use `install.sh` flags to include common toolchains:
+```sh-session
+# Ask opencode to install a toolchain (runs inside the sandbox container)
+opencode run "mise use -g rust@latest"   # any language: node, python, go, java, ruby, ...
+opencode run "mise use -g node@22"       # a specific version of an already-bundled tool
+```
+
+`mise use -g` writes to `~/.mise/config` and installs into `~/.mise/data`
+(both in the `opencode-tools` volume), so your toolchains are there on the
+next session. Anything mise supports — hundreds of runtimes — works this way.
+
+### At build time (flags)
+
+Use `install.sh` flags to include common toolchains in the image itself:
 
 ```sh-session
 ./install.sh -t node,python,cli
 ```
 
-Or use the `--recommended` flag for the full setup.
-
-For packages not covered by the built-in flags, add installation steps to the `Dockerfile` before the `USER dev` line:
+Or use the `--recommended` flag for the full setup. For packages not covered
+by the built-in flags (e.g. an apt-only system library), add installation
+steps to the `Dockerfile` before the `USER dev` line:
 
 ```dockerfile
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    your-package-here \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get install -y --no-install-recommends \
+    your-package-here
 ```
+
+(There is a single `apt-get update` per build — the package index is shared
+across layers via BuildKit cache mounts, so later `apt-get install` steps
+don't re-download it.)
 
 Then rebuild:
 
@@ -207,13 +251,14 @@ Cached layers make this fast.
 
 ### Inside the container (temporary)
 
-Packages installed during a session are lost when the container exits. This is useful for one-off experiments but not production use.
+Packages installed ad-hoc during a session (in places other than the volumes)
+are lost when the container exits. Useful for one-off experiments.
 
 ## Installing Plugins
 
 Plugins can be added at build time or at runtime.
 
-### At build time
+### At build/install time
 
 Use `install.sh -p` to pre-configure plugins so they're available immediately on first launch:
 
@@ -221,7 +266,8 @@ Use `install.sh -p` to pre-configure plugins so they're available immediately on
 ./install.sh -p superpowers,pty,notify,websearch
 ```
 
-This seeds them into the `opencode.json` that ships with the image. Available plugins:
+This seeds them into the `opencode.json` in your config volume at install
+time. Available plugins:
 
 - `superpowers` — [obra/superpowers](https://github.com/obra/superpowers): agentic skills framework
 - `pty` — [opencode-pty](https://github.com/shekohex/opencode-pty): true PTY support for interactive processes
@@ -241,6 +287,13 @@ next to the seeded skills (`~/.config/opencode/skills/`):
 |-------|---------|---------|-----------|
 | `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | Apache-2.0 | © Paul Bakaus |
 | `emil` | [emilkowalski/skills](https://github.com/emilkowalski/skills) | MIT | © Emil Kowalski |
+
+The image also bundles [mise](https://mise.jdx.dev) (runtime toolchain
+manager) at `/usr/local/bin/mise`:
+
+| Component | Project | License | Copyright |
+|-----------|---------|---------|-----------|
+| `mise` | [jdx/mise](https://github.com/jdx/mise) | MIT | © jdx |
 
 Only permissively-licensed (MIT, Apache-2.0, BSD, ISC, CC0) third-party
 integrations are accepted into this project. Copyleft, non-commercial, or
@@ -277,6 +330,42 @@ The sandbox isolates your **host**, not your **code**: anything you ask a cloud 
 - **Paid models** use zero-retention providers; OpenAI and Anthropic API requests are retained for 30 days.
 
 For confidential code, use your own API key with a provider you trust, or disable the data-collecting models in your Zen workspace. The sandbox never intercepts or stops prompts from reaching your chosen model provider.
+
+### Local models with Ollama (optional, fully private)
+
+If you want zero-cost, fully private inference (no data ever leaves your
+machine), run a local model server and point opencode at it:
+
+1. Install [Ollama](https://ollama.com) on your **host** and pull a model:
+   `ollama pull qwen3:4b` (or any model with an OpenAI-compatible endpoint).
+2. Run the sandbox with the host reachable:
+   `opencode` already mounts your project; Ollama's server listens on
+   `localhost:11434` on the host. Inside the container, use
+   `http://host.docker.internal:11434/v1` (works on Docker Desktop; on Linux
+   add `--add-host host.docker.internal:host-gateway` to the wrapper's
+   `docker run`).
+3. Add the provider to your config (`~/.config/opencode/opencode.json`):
+
+   ```json
+   {
+     "provider": {
+       "ollama": {
+         "npm": "@ai-sdk/openai-compatible",
+         "options": { "baseURL": "http://host.docker.internal:11434/v1" },
+         "models": {
+           "qwen3:4b": { "name": "Qwen3 4B (local)" }
+         }
+       }
+     }
+   }
+   ```
+
+4. Select it with `/models` in opencode.
+
+Local models are less capable than cloud frontier models, but they are free,
+private, and work offline. They are not included in the image (hardware
+requirements vary); the instructions above use only permissively-licensed
+tooling.
 
 ### Using Podman instead of Docker
 

@@ -1,8 +1,8 @@
 ---
 ignored:
   - DL3008  # Pin versions in apt get install: too strict for dev containers
+  - DL3009  # apt lists cleanup: handled by BuildKit cache mounts, not layers
   - DL3059  # Multiple consecutive RUN: acceptable for conditional installs
   - DL4006  # Set SHELL option -o pipefail: already set globally in Dockerfile
 trustedRegistries:
   - docker.io
-  - deb.nodesource.com

@@ -18,8 +18,14 @@ directory mounted at /home/dev/workspace.
 Options:
   --help, -h       Show this help message
 
-The container only sees your current project directory. Settings and
-auth tokens persist via Docker volumes.
+Environment (all optional):
+  HTTP_PROXY/HTTPS_PROXY/NO_PROXY   forwarded into the container
+  OPCODE_SANDBOX_READONLY=1         run with a read-only root filesystem
+  OPCODE_SANDBOX_MEMORY=<limit>     e.g. 4g (docker --memory)
+  OPCODE_SANDBOX_PIDS=<limit>       e.g. 512 (docker --pids-limit)
+
+The container only sees your current project directory. Settings, auth
+tokens, and runtime-installed toolchains (mise) persist via Docker volumes.
 
 Install: ./install.sh
 Uninstall: run ./uninstall.sh from the repo directory.
@@ -50,8 +56,18 @@ fi
 # Check if image exists
 if ! $CONTAINER_CMD image inspect local:opencode >/dev/null 2>&1; then
     echo "Error: 'local:opencode' Docker image not found."
-    echo "Run './install.sh' from the opencode-sandbox repo directory to build it."
+    echo "Run './install.sh' from the opencode-sandbox repo directory to install it."
     exit 1
+fi
+
+# Warn when the installed image is newer than the seeded config (stale seeds)
+STATE_DIR="$HOME/.config/opencode-sandbox"
+if [ -f "$STATE_DIR/seed-version" ]; then
+    IMG_VERSION="$($CONTAINER_CMD image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' local:opencode 2>/dev/null || true)"
+    SEED_VERSION="$(cat "$STATE_DIR/seed-version" 2>/dev/null || true)"
+    if [ -n "$IMG_VERSION" ] && [ "$IMG_VERSION" != "dev" ] && [ "$IMG_VERSION" != "$SEED_VERSION" ]; then
+        echo "Note: opencode-sandbox image updated. Run './install.sh --update' to sync config." >&2
+    fi
 fi
 
 CWD="$(pwd)"
@@ -61,11 +77,41 @@ CWD="$(pwd)"
 # COLORTERM: advertise truecolor support
 ENV_FLAGS=(-e "TERM=${TERM:-xterm-256color}" -e COLORTERM=truecolor)
 
+# Forward proxy and sandbox-tuning env vars (when set on the host)
+for v in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy \
+         OPCODE_SANDBOX_READONLY OPCODE_SANDBOX_MEMORY OPCODE_SANDBOX_PIDS; do
+    if [ -n "${!v:-}" ]; then
+        ENV_FLAGS+=(-e "$v=${!v}")
+    fi
+done
+
+# mise: toolchains installed at runtime persist in the opencode-tools volume
+ENV_FLAGS+=(-e MISE_DATA_DIR=/home/dev/.mise/data -e MISE_CONFIG_DIR=/home/dev/.mise/config)
+ENV_FLAGS+=(-e "PATH=/home/dev/.mise/data/shims:/home/dev/.local/bin:/home/dev/.opencode/bin:/usr/local/bin:/usr/bin:/bin")
+
+# Hardening: drop all capabilities, disallow privilege escalation
+SECURITY_FLAGS=(--cap-drop ALL --security-opt no-new-privileges)
+
+# Optional: read-only root filesystem (tmpfs for /tmp)
+if [ "${OPCODE_SANDBOX_READONLY:-}" = "1" ]; then
+    SECURITY_FLAGS+=(--read-only --tmpfs /tmp)
+fi
+
+# Optional resource limits
+if [ -n "${OPCODE_SANDBOX_MEMORY:-}" ]; then
+    SECURITY_FLAGS+=(--memory "$OPCODE_SANDBOX_MEMORY")
+fi
+if [ -n "${OPCODE_SANDBOX_PIDS:-}" ]; then
+    SECURITY_FLAGS+=(--pids-limit "$OPCODE_SANDBOX_PIDS")
+fi
+
 $CONTAINER_CMD run --rm -it \
   --name "opencode-$(basename "$CWD" | tr -cd 'a-zA-Z0-9_-')-$$" \
   "${ENV_FLAGS[@]}" \
+  "${SECURITY_FLAGS[@]}" \
   -v opencode-config:/home/dev/.config/opencode \
   -v opencode-data:/home/dev/.local/share/opencode \
+  -v opencode-tools:/home/dev/.mise \
   -v "$CWD":/home/dev/workspace \
   -w /home/dev/workspace \
   local:opencode "$@"
