@@ -146,7 +146,7 @@ jobs:
             --build-arg "SANDBOX_VERSION=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ github.sha }}" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
-            -t ghcr.io/${{ github.repository }}:minimal \
+            -t ghcr.io/${{ lower(github.repository) }}:minimal \
             --push .
 
       - name: Build and push recommended
@@ -160,8 +160,8 @@ jobs:
             --build-arg "SANDBOX_VERSION=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ github.sha }}" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
-            -t ghcr.io/${{ github.repository }}:recommended \
-            -t ghcr.io/${{ github.repository }}:latest \
+            -t ghcr.io/${{ lower(github.repository) }}:recommended \
+            -t ghcr.io/${{ lower(github.repository) }}:latest \
             --push .
 
   # Stage 5: End-to-end tests
