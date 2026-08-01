@@ -31,11 +31,11 @@ Build and install the opencode-sandbox Docker image + wrapper script.
 
 Options:
   -R, --recommended     Full power-up (Node.js + Python + CLI tools +
-                          superpowers + pty + notify + websearch + 
+                          superpowers + pty + notify + websearch + impeccable + emil +
                           filesystem MCP + Context7 MCP + agents)
   -t, --toolchain LIST  Comma-separated toolchains: node,python,go,cli
-  -p, --plugin LIST     Comma-separated plugins:
-                          superpowers,pty,notify,websearch,mcp-tool-search
+  -p, --plugin LIST     Comma-separated plugins/skills:
+                          superpowers,pty,notify,websearch,mcp-tool-search,impeccable,emil
   -m, --mcp LIST        Comma-separated MCP servers:
                           filesystem,context7,brave-search,github
   -a, --agents          Include pre-built agent files (code-reviewer,
@@ -60,7 +60,7 @@ while [[ $# -gt 0 ]]; do
             INSTALL_NODE=true
             INSTALL_PYTHON=true
             INSTALL_CLI_TOOLS=true
-            OPCODE_PLUGINS="superpowers,pty,notify,websearch"
+            OPCODE_PLUGINS="superpowers,pty,notify,websearch,impeccable,emil"
             OPCODE_MCP="filesystem,context7"
             OPCODE_AGENTS=true
             shift
@@ -124,7 +124,7 @@ if [ "$INTERACTIVE" = true ]; then
 
     header "Plugin selection"
     echo "Which plugins would you like to configure? (comma-separated)"
-    echo "  superpowers, pty, notify, websearch, mcp-tool-search"
+    echo "  superpowers, pty, notify, websearch, mcp-tool-search, impeccable, emil"
     echo "  (leave empty for none)"
     read -r OPCODE_PLUGINS
 
@@ -140,6 +140,11 @@ if [ "$INTERACTIVE" = true ]; then
     if [[ "$agent_choice" =~ ^[Yy] ]]; then
         OPCODE_AGENTS=true
     fi
+fi
+
+# ── Impeccable requires Node.js (its scripts run via node) ───
+if [[ "$OPCODE_PLUGINS" == *impeccable* ]]; then
+    INSTALL_NODE=true
 fi
 
 # ── Detect OS & shell ────────────────────────────────────────

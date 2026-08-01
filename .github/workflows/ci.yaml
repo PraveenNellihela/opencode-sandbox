@@ -75,6 +75,10 @@ jobs:
             args: "--build-arg INSTALL_PYTHON=true"
           - name: "go"
             args: "--build-arg INSTALL_GO=true"
+          - name: "impeccable"
+            args: "--build-arg INSTALL_NODE=true --build-arg OPCODE_PLUGINS=impeccable"
+          - name: "emil"
+            args: "--build-arg OPCODE_PLUGINS=emil"
           - name: "agents"
             args: "--build-arg OPCODE_AGENTS=true"
           - name: "recommended"
@@ -82,7 +86,7 @@ jobs:
               --build-arg INSTALL_NODE=true
               --build-arg INSTALL_PYTHON=true
               --build-arg INSTALL_CLI_TOOLS=true
-              --build-arg OPCODE_PLUGINS="superpowers,pty,notify,websearch"
+              --build-arg OPCODE_PLUGINS="superpowers,pty,notify,websearch,impeccable,emil"
               --build-arg OPCODE_MCP="filesystem,context7"
               --build-arg OPCODE_AGENTS=true
     steps:
@@ -108,6 +112,18 @@ jobs:
       - name: Verify opencode binary
         run: |
           docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c "which opencode"
+
+      - name: Verify impeccable skill seeded
+        if: matrix.name == 'impeccable' || matrix.name == 'recommended'
+        run: |
+          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest \
+            -c "test -f /home/dev/.config/opencode/skills/impeccable/SKILL.md && test -f /home/dev/.config/opencode/skills/impeccable/LICENSE && test -f /home/dev/.config/opencode/skills/impeccable/NOTICE.md"
+
+      - name: Verify emil skills seeded
+        if: matrix.name == 'emil' || matrix.name == 'recommended'
+        run: |
+          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest \
+            -c "test -f /home/dev/.config/opencode/skills/emil-design-eng/SKILL.md && test -f /home/dev/.config/opencode/skills/LICENSE-emil-skills"
 
   # Stage 4: End-to-end tests
   e2e:

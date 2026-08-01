@@ -11,22 +11,25 @@
 [![Docker](https://img.shields.io/badge/docker-%3E%3D20.10-blue?logo=docker)](https://docs.docker.com/get-docker/)
 [![Platform](https://img.shields.io/badge/platform-linux%20|%20macOS%20|%20wsl2-lightgrey?logo=linux)](https://github.com/PraveenNellihela/opencode-sandbox)
 
-Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS. Free models, no token limits, your host stays protected.
+Isolated, persistent Docker sandbox for running [opencode](https://opencode.ai) on any OS. Free model options included, your host stays protected.
+
+> **Not affiliated with OpenCode.** This project is community-built and is not created by, endorsed by, or affiliated with the OpenCode team in any way. See the [Building on OpenCode](https://github.com/anomalyco/opencode#building-on-opencode) note in the OpenCode README.
 
 ## Why sandbox opencode?
 
-opencode is a powerful, free AI coding agent — but giving any AI CLI access
-to your entire filesystem is a genuine security risk. Prompt injections in
+opencode is a powerful, open-source AI coding agent. It offers free-tier
+models (free for a limited time while the OpenCode team improves them) and
+optional pay-as-you-go premium models — but giving any AI CLI access to your
+entire filesystem is a genuine security risk. Prompt injections in
 dependencies, malicious code in repos you ask it to review, or simple bugs
-could expose your whole machine. Paid AI coding tools often lock you into
-token limits and expiring usage windows. opencode-sandbox fixes all of this.
+could expose your whole machine. opencode-sandbox fixes all of this.
 
 | Benefit | What it means for you |
 |---------|----------------------|
 | **🔒 Host isolation** | The AI only sees your current project directory. SSH keys, browser data, dotfiles, and other repos stay off-limits. |
 | **🛡️ Non-root by default** | Runs as a dedicated `dev` user with no `sudo`. Even a compromised agent can't escalate to your host. |
-| **💸 Free, capable models** | opencode includes free models (DeepSeek V4 Flash, Big Pickle, etc.) that are genuinely useful for everyday coding — this entire repo was built with them. No monthly subscription needed. |
-| **⏱️ No token limits** | Unlike Claude Code's paid tokens that expire, you use models on your terms. Pay only if you choose a premium provider. |
+| **💸 Free, capable models** | opencode includes free-tier models (DeepSeek V4 Flash Free, Big Pickle, etc.) that are genuinely useful for everyday coding — this entire repo was built with them. No subscription needed. Free models are a limited-time offer and may use your prompts to improve the model — see [Privacy notes](#privacy-and-data-handling). |
+| **⏱️ No subscription windows** | Premium models are pay-as-you-go (per token, with optional monthly caps); free-tier models cost $0 while they are offered. You pay only if you choose a premium provider. |
 | **📦 Identical everywhere** | The same Docker image behaves identically on Linux, macOS, and Windows (WSL2). No "works on my machine." |
 | **🔄 Smart persistence** | Auth tokens, plugins, and config survive restarts via Docker volumes. System packages reset cleanly each session. |
 | **⚙️ Reproducible toolchains** | Node.js, Python, Go, CLI tools — pre-installed at build time, not ad-hoc `apt-get`. Teammates get identical environments. |
@@ -54,9 +57,9 @@ Pass flags to `install.sh` to pre-install toolchains, agents, plugins, and MCP s
 
 | Flag | Description |
 |------|-------------|
-| `-R, --recommended` | Full power-up (Node.js + Python + CLI tools + superpowers + plugins + MCP + agents) |
+| `-R, --recommended` | Full power-up (Node.js + Python + CLI tools + superpowers + plugins + MCP + agents + impeccable + emil) |
 | `-t, --toolchain LIST` | Comma-separated: `node,python,go,cli` |
-| `-p, --plugin LIST` | Comma-separated: `superpowers,pty,notify,websearch,mcp-tool-search` |
+| `-p, --plugin LIST` | Comma-separated: `superpowers,pty,notify,websearch,mcp-tool-search,impeccable,emil` |
 | `-m, --mcp LIST` | Comma-separated: `filesystem,context7,brave-search,github` |
 | `-a, --agents` | Include 6 pre-built subagents (code-reviewer, security-analyst, debugger, documenter, tester, planner) |
 | `-i, --interactive` | Interactive prompts for selections |
@@ -82,6 +85,7 @@ Examples:
 ```
 Toolchains: Node.js + Python 3 + ripgrep + fd-find + jq + tmux
 Plugins:    superpowers + opencode-pty + opencode-notify + opencode-websearch-cited
+Skills:     impeccable (design) + emil (8 animation/design skills)
 MCP:        filesystem + Context7
 Agents:     code-reviewer, security-analyst, debugger, documenter, tester, planner
 ```
@@ -224,6 +228,23 @@ This seeds them into the `opencode.json` that ships with the image. Available pl
 - `notify` — [opencode-notify](https://github.com/opencode-notify): desktop notifications on task completion
 - `websearch` — [opencode-websearch-cited](https://github.com/ghoulr/opencode-websearch-cited): web search with citations
 - `mcp-tool-search` — [opencode-mcp-tool-search](https://github.com/francisco-m001/opencode-mcp-tool-search): reduces context bloat from MCP servers
+- `impeccable` — [impeccable.style](https://impeccable.style): design skill with 23 commands (`/impeccable polish`, `/audit`, `/typeset`, …) and 59 slop-detector rules. Seeded as a global skill and runs in the `build` agent; its scripts (live mode, detector) require Node.js, which is enabled automatically. Invoke it with `/impeccable <command>`.
+- `emil` — [emilkowal.ski/skill](https://emilkowal.ski/skill): 8 skills from Emil Kowalski's design-engineering philosophy, focused on motion craft (easing curves, spring physics, durations) plus taste and prototyping. All pure markdown — no runtime dependencies. Skills: `emil-design-eng`, `review-animations`, `improve-animations`, `find-animation-opportunities`, `animation-vocabulary`, `apple-design`, `pick-ui-library`, `prototype`.
+
+### Third-party licenses
+
+The skills above are independent third-party projects maintained by their own
+authors, not by this project. Their license files ship inside the Docker image
+next to the seeded skills (`~/.config/opencode/skills/`):
+
+| Skill | Project | License | Copyright |
+|-------|---------|---------|-----------|
+| `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | Apache-2.0 | © Paul Bakaus |
+| `emil` | [emilkowalski/skills](https://github.com/emilkowalski/skills) | MIT | © Emil Kowalski |
+
+Only permissively-licensed (MIT, Apache-2.0, BSD, ISC, CC0) third-party
+integrations are accepted into this project. Copyleft, non-commercial, or
+unlicensed integrations are rejected.
 
 ### Inside the container (persistent)
 
@@ -237,6 +258,8 @@ Fetch and follow instructions from https://raw.githubusercontent.com/obra/superp
 
 To edit the generated config after the container is running, open the TUI and use opencode's config commands, or edit `~/.config/opencode/opencode.json` directly on the host (it's stored in the Docker volume).
 
+> **No warranty.** Provided as-is under the MIT License. The AI agent can make mistakes — or worse, follow malicious instructions — so you use it at your own risk; the authors are not liable for any damage. Follow security best practices: don't grant the container more access than it needs, don't paste secrets or sensitive data into prompts, and keep the image and opencode updated.
+
 ## Security Model
 
 - **Non-root:** Container runs as `dev` user with no sudo.
@@ -244,6 +267,16 @@ To edit the generated config after the container is running, open the TUI and us
 - **Network:** Default bridge networking — can reach internet (for LLM APIs) but nothing on host is exposed.
 
 If you need live root for something, that's a signal to add it to the Dockerfile and rebuild, not to grant privilege escalation.
+
+### Privacy and data handling
+
+The sandbox isolates your **host**, not your **code**: anything you ask a cloud LLM leaves your machine and is processed by that model's provider under its own policies. What that means for opencode's built-in models (via [OpenCode Zen](https://opencode.ai/docs/zen/#privacy)):
+
+- **Free-tier models** (DeepSeek V4 Flash Free, Big Pickle, MiMo-V2.5 Free, etc.) are free for a limited time while the OpenCode team collects feedback, and data collected during that period may be used to improve the models.
+- **Trial endpoints** (North Mini Code Free, Nemotron 3 Ultra Free) are trial-use only — do not submit personal or confidential data.
+- **Paid models** use zero-retention providers; OpenAI and Anthropic API requests are retained for 30 days.
+
+For confidential code, use your own API key with a provider you trust, or disable the data-collecting models in your Zen workspace. The sandbox never intercepts or stops prompts from reaching your chosen model provider.
 
 ### Using Podman instead of Docker
 
