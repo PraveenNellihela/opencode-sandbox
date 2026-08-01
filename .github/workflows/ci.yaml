@@ -140,16 +140,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push minimal
+        env:
+          IMAGE_REPO: ${{ github.repository }}
         run: |
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --build-arg "SANDBOX_VERSION=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ github.sha }}" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
-            -t ghcr.io/${{ lower(github.repository) }}:minimal \
+            -t "ghcr.io/${IMAGE_REPO,,}:minimal" \
             --push .
 
       - name: Build and push recommended
+        env:
+          IMAGE_REPO: ${{ github.repository }}
         run: |
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
@@ -160,8 +164,8 @@ jobs:
             --build-arg "SANDBOX_VERSION=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ github.sha }}" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
-            -t ghcr.io/${{ lower(github.repository) }}:recommended \
-            -t ghcr.io/${{ lower(github.repository) }}:latest \
+            -t "ghcr.io/${IMAGE_REPO,,}:recommended" \
+            -t "ghcr.io/${IMAGE_REPO,,}:latest" \
             --push .
 
   # Stage 5: End-to-end tests
