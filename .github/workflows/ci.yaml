@@ -73,22 +73,16 @@ jobs:
             args: "--build-arg INSTALL_NODE=true"
           - name: "python"
             args: "--build-arg INSTALL_PYTHON=true"
-          - name: "go"
-            args: "--build-arg INSTALL_GO=true"
           - name: "impeccable"
             args: "--build-arg INSTALL_NODE=true --build-arg OPCODE_PLUGINS=impeccable"
           - name: "emil"
             args: "--build-arg OPCODE_PLUGINS=emil"
-          - name: "agents"
-            args: "--build-arg OPCODE_AGENTS=true"
           - name: "recommended"
             args: >-
               --build-arg INSTALL_NODE=true
               --build-arg INSTALL_PYTHON=true
               --build-arg INSTALL_CLI_TOOLS=true
               --build-arg OPCODE_PLUGINS="superpowers,pty,notify,websearch,impeccable,emil"
-              --build-arg OPCODE_MCP="filesystem,context7"
-              --build-arg OPCODE_AGENTS=true
     steps:
       - uses: actions/checkout@v4
 
@@ -99,19 +93,19 @@ jobs:
         run: |
           docker build ${{ matrix.args }} -t test-${{ matrix.name }}:latest .
 
-      - name: Verify opencode.json is valid JSON
-        run: |
-          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest \
-            -c "test -s /home/dev/.config/opencode/opencode.json && { command -v jq >/dev/null 2>&1 && jq . /home/dev/.config/opencode/opencode.json || true; }"
-
       - name: Verify non-root user
         run: |
           USER=$(docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c "whoami")
           [ "$USER" = "dev" ]
 
-      - name: Verify opencode binary
+      - name: Verify opencode binary runs
         run: |
-          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c "which opencode"
+          docker run --rm test-${{ matrix.name }}:latest --version
+
+      - name: Verify config seeder and templates present
+        run: |
+          docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest -c \
+            "test -f /opt/opencode-sandbox/configure-opencode.sh && test -f /opt/opencode-sandbox/preconfig/opencode.json && test -f /opt/opencode-sandbox/VERSION && test -x /usr/local/bin/mise"
 
       - name: Verify impeccable skill seeded
         if: matrix.name == 'impeccable' || matrix.name == 'recommended'
@@ -125,7 +119,52 @@ jobs:
           docker run --rm --entrypoint /bin/sh test-${{ matrix.name }}:latest \
             -c "test -f /home/dev/.config/opencode/skills/emil-design-eng/SKILL.md && test -f /home/dev/.config/opencode/skills/LICENSE-emil-skills"
 
-  # Stage 4: End-to-end tests
+  # Stage 4: Publish prebuilt multi-arch images to GHCR (on main only)
+  publish:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push minimal
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg "SANDBOX_VERSION=${{ github.sha }}" \
+            --label "org.opencontainers.image.version=${{ github.sha }}" \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            -t ghcr.io/${{ github.repository }}:minimal \
+            --push .
+
+      - name: Build and push recommended
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg "INSTALL_NODE=true" \
+            --build-arg "INSTALL_PYTHON=true" \
+            --build-arg "INSTALL_CLI_TOOLS=true" \
+            --build-arg "OPCODE_PLUGINS=superpowers,pty,notify,websearch,impeccable,emil" \
+            --build-arg "SANDBOX_VERSION=${{ github.sha }}" \
+            --label "org.opencontainers.image.version=${{ github.sha }}" \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            -t ghcr.io/${{ github.repository }}:recommended \
+            -t ghcr.io/${{ github.repository }}:latest \
+            --push .
+
+  # Stage 5: End-to-end tests
   e2e:
     runs-on: ubuntu-latest
     needs: docker-build

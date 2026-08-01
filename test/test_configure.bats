@@ -145,3 +145,65 @@ setup() {
              <(jq -S '.plugin, .mcp' test/fixtures/golden_recommended.json)
     [ "$status" -eq 0 ]
 }
+
+# ── Version stamp ────────────────────────────────────────────
+
+@test "writes seed version stamp (from SANDBOX_VERSION)" {
+    export SANDBOX_VERSION="abc123"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$TEST_CONFIG_DIR/.sandbox-seed-version")" == "abc123" ]]
+}
+
+@test "stamp defaults to dev without SANDBOX_VERSION" {
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$TEST_CONFIG_DIR/.sandbox-seed-version")" == "dev" ]]
+}
+
+# ── Merge mode ───────────────────────────────────────────────
+
+@test "merge mode preserves user plugins and adds new defaults" {
+    export OPCODE_PLUGINS="pty"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    jq '.plugin += ["my-custom-plugin"]' "$TEST_CONFIG_DIR/opencode.json" \
+        > "$TEST_CONFIG_DIR/opencode.json.tmp" && mv "$TEST_CONFIG_DIR/opencode.json.tmp" "$TEST_CONFIG_DIR/opencode.json"
+
+    export OPCODE_PLUGINS="superpowers,pty"
+    export OPCODE_MCP="filesystem"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR" merge
+    [ "$status" -eq 0 ]
+    run jq -e '.plugin | index("my-custom-plugin")' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$status" -eq 0 ]
+    run jq -e '.plugin | index("superpowers@git+https://github.com/obra/superpowers.git")' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$status" -eq 0 ]
+    run jq -e '.mcp.filesystem' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$status" -eq 0 ]
+}
+
+@test "merge mode preserves user model setting" {
+    export SANDBOX_VERSION="v1"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    jq '.model = "anthropic/claude-sonnet-4-5"' "$TEST_CONFIG_DIR/opencode.json" \
+        > "$TEST_CONFIG_DIR/opencode.json.tmp" && mv "$TEST_CONFIG_DIR/opencode.json.tmp" "$TEST_CONFIG_DIR/opencode.json"
+
+    export SANDBOX_VERSION="v2"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR" merge
+    [ "$status" -eq 0 ]
+    run jq -r '.model' "$TEST_CONFIG_DIR/opencode.json"
+    [ "$output" = "anthropic/claude-sonnet-4-5" ]
+    [[ "$(cat "$TEST_CONFIG_DIR/.sandbox-seed-version")" == "v2" ]]
+}
+
+@test "merge mode does not overwrite user-edited agents" {
+    export OPCODE_AGENTS="true"
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR"
+    [ "$status" -eq 0 ]
+    echo "USER EDIT" >> "$TEST_CONFIG_DIR/agents/planner.md"
+
+    run bash scripts/configure-opencode.sh "$TEST_CONFIG_DIR" "$TEST_TEMPLATE_DIR" merge
+    [ "$status" -eq 0 ]
+    grep -q "USER EDIT" "$TEST_CONFIG_DIR/agents/planner.md"
+}

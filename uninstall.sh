@@ -84,7 +84,7 @@ fi
 
 # Check for container volumes
 if [ -n "$CONTAINER_CMD" ]; then
-    VOLUMES=$($CONTAINER_CMD volume ls --format '{{.Name}}' 2>/dev/null | grep -E "opencode-config|opencode-data" || true)
+    VOLUMES=$($CONTAINER_CMD volume ls --format '{{.Name}}' 2>/dev/null | grep -E "opencode-config|opencode-data|opencode-tools" || true)
 else
     VOLUMES=""
 fi
@@ -93,21 +93,28 @@ if [ -n "$VOLUMES" ]; then
     echo "Found opencode data volumes:"
     echo "$VOLUMES" | while read -r vol; do
         case "$vol" in
-            opencode-config) echo "  - $vol (settings, plugins)";;
+            opencode-config) echo "  - $vol (settings, plugins, skills)";;
             opencode-data)   echo "  - $vol (auth tokens, sessions)";;
+            opencode-tools)  echo "  - $vol (runtime toolchains via mise)";;
         esac
     done
     echo ""
     read -p "Remove these volumes? This cannot be undone. [y/N] " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        $CONTAINER_CMD volume rm opencode-config opencode-data 2>/dev/null || true
+        $CONTAINER_CMD volume rm opencode-config opencode-data opencode-tools 2>/dev/null || true
         info "Removed container volumes"
     else
-        warn "Volumes kept. Remove later with: $CONTAINER_CMD volume rm opencode-config opencode-data"
+        warn "Volumes kept. Remove later with: $CONTAINER_CMD volume rm opencode-config opencode-data opencode-tools"
     fi
 else
     info "No opencode volumes found"
+fi
+
+# Remove installer state
+if [ -d "$HOME/.config/opencode-sandbox" ]; then
+    rm -rf "$HOME/.config/opencode-sandbox"
+    info "Removed ~/.config/opencode-sandbox (install state)"
 fi
 
 # Check for container image

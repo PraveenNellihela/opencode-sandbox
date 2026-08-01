@@ -53,3 +53,24 @@ setup() {
     run ./install.sh --help
     [[ "$output" == *"--agents"* ]]
 }
+
+@test "--update flag appears in help" {
+    run ./install.sh --help
+    [[ "$output" == *"--update"* ]]
+}
+
+@test "--build flag appears in help" {
+    run ./install.sh --help
+    [[ "$output" == *"--build"* ]]
+}
+
+@test "go is not offered as a toolchain" {
+    run ./install.sh --help
+    [[ "$output" != *"node,python,go"* ]]
+    [[ "$output" != *"Toolchains: Go"* ]]
+}
+
+@test "-t go warns and is ignored" {
+    run ./install.sh -t go 2>&1 || true
+    [[ "$output" == *"Unknown toolchain: go"* ]]
+}

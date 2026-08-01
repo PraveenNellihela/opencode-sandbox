@@ -16,24 +16,32 @@ header() { echo -e "${BLUE}==>${NC} $1"; }
 # ── Defaults ─────────────────────────────────────────────────
 INSTALL_NODE=false
 INSTALL_PYTHON=false
-INSTALL_GO=false
 INSTALL_CLI_TOOLS=false
 OPCODE_PLUGINS=""
 OPCODE_MCP=""
 OPCODE_AGENTS=false
+RECOMMENDED=false
+EXPLICIT_FLAGS=false
+INTERACTIVE=false
+UPDATE_FLAG=false
+BUILD_FLAG=false
+
+IMAGE_REPO="ghcr.io/praveennellihela/opencode-sandbox"
+STATE_DIR="$HOME/.config/opencode-sandbox"
 
 # ── Help ─────────────────────────────────────────────────────
 show_help() {
     cat <<EOF
 Usage: install.sh [options]
 
-Build and install the opencode-sandbox Docker image + wrapper script.
+Install opencode-sandbox: fetches a prebuilt image (fast) or builds one
+locally, seeds the opencode configuration, and installs the wrapper script.
 
 Options:
   -R, --recommended     Full power-up (Node.js + Python + CLI tools +
                           superpowers + pty + notify + websearch + impeccable + emil +
                           filesystem MCP + Context7 MCP + agents)
-  -t, --toolchain LIST  Comma-separated toolchains: node,python,go,cli
+  -t, --toolchain LIST  Comma-separated toolchains: node,python,cli
   -p, --plugin LIST     Comma-separated plugins/skills:
                           superpowers,pty,notify,websearch,mcp-tool-search,impeccable,emil
   -m, --mcp LIST        Comma-separated MCP servers:
@@ -41,22 +49,29 @@ Options:
   -a, --agents          Include pre-built agent files (code-reviewer,
                           security-analyst, debugger, documenter, tester, planner)
   -i, --interactive     Interactive prompts for selections
+  -u, --update          Re-pull the previously installed variant and re-seed
+  -b, --build           Force building the image locally instead of pulling
   -h, --help            Show this help message
 
+Default behavior:
+  ./install.sh                  Pulls the prebuilt minimal image
+  ./install.sh --recommended    Pulls the prebuilt recommended image
+  ./install.sh <custom flags>   Builds locally with your selections
+
 Examples:
-  ./install.sh                          # Minimal (same as current default)
-  ./install.sh --recommended            # Full power-up
-  ./install.sh -t node,cli -p superpowers -a   # Custom setup
+  ./install.sh --recommended
+  ./install.sh -t node,cli -p superpowers -a   # custom build
+  ./install.sh --update                        # refresh to the latest image
 
 EOF
     exit 0
 }
 
 # ── Parse flags ──────────────────────────────────────────────
-INTERACTIVE=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -R|--recommended)
+            RECOMMENDED=true
             INSTALL_NODE=true
             INSTALL_PYTHON=true
             INSTALL_CLI_TOOLS=true
@@ -66,35 +81,47 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -t|--toolchain)
+            EXPLICIT_FLAGS=true
             if [ -z "${2:-}" ]; then error "--toolchain requires a value"; fi
             IFS=',' read -ra items <<< "$2"
             for item in "${items[@]}"; do
                 case "$item" in
                     node)   INSTALL_NODE=true ;;
                     python) INSTALL_PYTHON=true ;;
-                    go)     INSTALL_GO=true ;;
                     cli)    INSTALL_CLI_TOOLS=true ;;
-                    *)      warn "Unknown toolchain: $item (valid: node,python,go,cli)" ;;
+                    *)      warn "Unknown toolchain: $item (valid: node,python,cli)" ;;
                 esac
             done
             shift 2
             ;;
         -p|--plugin)
+            EXPLICIT_FLAGS=true
             if [ -z "${2:-}" ]; then error "--plugin requires a value"; fi
             OPCODE_PLUGINS="$2"
             shift 2
             ;;
         -m|--mcp)
+            EXPLICIT_FLAGS=true
             if [ -z "${2:-}" ]; then error "--mcp requires a value"; fi
             OPCODE_MCP="$2"
             shift 2
             ;;
         -a|--agents)
+            EXPLICIT_FLAGS=true
             OPCODE_AGENTS=true
             shift
             ;;
         -i|--interactive)
+            EXPLICIT_FLAGS=true
             INTERACTIVE=true
+            shift
+            ;;
+        -u|--update)
+            UPDATE_FLAG=true
+            shift
+            ;;
+        -b|--build)
+            BUILD_FLAG=true
             shift
             ;;
         -h|--help)
@@ -110,14 +137,13 @@ done
 if [ "$INTERACTIVE" = true ]; then
     header "Toolchain selection"
     echo "Which toolchains would you like to install? (space-separated)"
-    echo "  node python go cli"
-    echo "  (leave empty for none)"
+    echo "  node python cli"
+    echo "  (leave empty for none — any other language can be added later with mise)"
     read -r -a toolchain_choices
     for item in "${toolchain_choices[@]}"; do
         case "$item" in
             node)   INSTALL_NODE=true ;;
             python) INSTALL_PYTHON=true ;;
-            go)     INSTALL_GO=true ;;
             cli)    INSTALL_CLI_TOOLS=true ;;
         esac
     done
@@ -187,12 +213,11 @@ echo "Config: $CONFIG_FILE"
 echo ""
 
 if [ "$OPCODE_PLUGINS" != "" ] || [ "$OPCODE_MCP" != "" ] || [ "$OPCODE_AGENTS" = true ] || \
-   [ "$INSTALL_NODE" = true ] || [ "$INSTALL_PYTHON" = true ] || [ "$INSTALL_GO" = true ] || [ "$INSTALL_CLI_TOOLS" = true ]; then
+   [ "$INSTALL_NODE" = true ] || [ "$INSTALL_PYTHON" = true ] || [ "$INSTALL_CLI_TOOLS" = true ]; then
     echo "Build configuration:"
     [ "$INSTALL_NODE" = true ]       && echo "  Toolchains: Node.js"
     [ "$INSTALL_PYTHON" = true ]     && echo "  Toolchains: Python 3"
-    [ "$INSTALL_GO" = true ]         && echo "  Toolchains: Go"
-    [ "$INSTALL_CLI_TOOLS" = true ]  && echo "  Toolchains: ripgrep, fd-find, jq, tmux"
+    [ "$INSTALL_CLI_TOOLS" = true ]  && echo "  Toolchains: ripgrep, fd-find, tmux"
     [ "$OPCODE_PLUGINS" != "" ]      && echo "  Plugins: $OPCODE_PLUGINS"
     [ "$OPCODE_MCP" != "" ]          && echo "  MCP servers: $OPCODE_MCP"
     [ "$OPCODE_AGENTS" = true ]      && echo "  Agents: code-reviewer, security-analyst, debugger, documenter, tester, planner"
@@ -231,10 +256,8 @@ if ! $CONTAINER_CMD info >/dev/null 2>&1; then
     error "$CONTAINER_CMD daemon not running. Start it and try again."
 fi
 
-# ── Build Docker image with selected features ────────────────
+# ── Create ~/bin if needed ───────────────────────────────────
 echo ""
-
-# Create ~/bin if needed (we need it after build to install the wrapper)
 if [ ! -d "$HOME/bin" ]; then
     mkdir -p "$HOME/bin"
     # shellcheck disable=SC2088
@@ -251,24 +274,89 @@ if [ ! -f "$SCRIPT_DIR/opencode" ]; then
     exit 1
 fi
 
-BUILD_ARGS=(
-    --build-arg "INSTALL_NODE=$INSTALL_NODE"
-    --build-arg "INSTALL_PYTHON=$INSTALL_PYTHON"
-    --build-arg "INSTALL_GO=$INSTALL_GO"
-    --build-arg "INSTALL_CLI_TOOLS=$INSTALL_CLI_TOOLS"
-    --build-arg "OPCODE_PLUGINS=$OPCODE_PLUGINS"
-    --build-arg "OPCODE_MCP=$OPCODE_MCP"
-    --build-arg "OPCODE_AGENTS=$OPCODE_AGENTS"
-)
+# ── Acquire the image (pull prebuilt or build locally) ───────
+VARIANT=""
+IMG_VERSION=""
 
-info "Building Docker image (this may take a few minutes)..."
-if $CONTAINER_CMD build "${BUILD_ARGS[@]}" -t local:opencode "$SCRIPT_DIR"; then
+pull_image() {
+    local variant="$1"
+    header "Fetching prebuilt image ($variant)..."
+    if ! $CONTAINER_CMD pull "$IMAGE_REPO:$variant"; then
+        warn "Pull failed. Falling back to building locally."
+        build_image
+        return
+    fi
+    $CONTAINER_CMD tag "$IMAGE_REPO:$variant" local:opencode
+    $CONTAINER_CMD rmi "$IMAGE_REPO:$variant" >/dev/null 2>&1 || true
+    info "Image pulled and tagged as local:opencode"
+    VARIANT="$variant"
+    IMG_VERSION="$($CONTAINER_CMD image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' local:opencode 2>/dev/null || echo "dev")"
+    if [ -z "$IMG_VERSION" ]; then
+        IMG_VERSION="dev"
+    fi
+}
+
+build_image() {
+    header "Building Docker image locally (this may take a few minutes)..."
+    local version
+    version="$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")"
+    if ! $CONTAINER_CMD build \
+        --build-arg "INSTALL_NODE=$INSTALL_NODE" \
+        --build-arg "INSTALL_PYTHON=$INSTALL_PYTHON" \
+        --build-arg "INSTALL_CLI_TOOLS=$INSTALL_CLI_TOOLS" \
+        --build-arg "OPCODE_PLUGINS=$OPCODE_PLUGINS" \
+        --build-arg "SANDBOX_VERSION=$version" \
+        --label "org.opencontainers.image.version=$version" \
+        -t local:opencode "$SCRIPT_DIR"; then
+        error "Docker image build failed"
+    fi
     info "Docker image built successfully"
+    VARIANT="built"
+    IMG_VERSION="$version"
+}
+
+if [ "$UPDATE_FLAG" = true ]; then
+    # Re-pull the previously installed variant and re-seed.
+    if [ "$EXPLICIT_FLAGS" = true ]; then
+        warn "--update ignores custom flags; re-run without --update to apply them."
+    fi
+    UPDATE_VARIANT="$(cat "$STATE_DIR/variant" 2>/dev/null || echo "recommended")"
+    if [ "$UPDATE_VARIANT" = "built" ]; then
+        warn "Previous install was built locally; --update cannot refresh it."
+        warn "Re-run install.sh with your original flags (add --build) to rebuild."
+        UPDATE_VARIANT="recommended"
+    fi
+    pull_image "$UPDATE_VARIANT"
+elif [ "$BUILD_FLAG" = true ] || [ "$EXPLICIT_FLAGS" = true ]; then
+    build_image
+elif [ "$RECOMMENDED" = true ]; then
+    pull_image "recommended"
 else
-    error "Docker image build failed"
+    pull_image "minimal"
 fi
 
-# Copy wrapper only after successful build
+# ── Seed the config volume ───────────────────────────────────
+header "Seeding opencode configuration..."
+merge_args=()
+if $CONTAINER_CMD run --rm -v opencode-config:/home/dev/.config/opencode \
+    --entrypoint test local:opencode -f /home/dev/.config/opencode/opencode.json >/dev/null 2>&1; then
+    merge_args=(merge)
+fi
+$CONTAINER_CMD run --rm \
+    -v opencode-config:/home/dev/.config/opencode \
+    -e "OPCODE_PLUGINS=$OPCODE_PLUGINS" \
+    -e "OPCODE_MCP=$OPCODE_MCP" \
+    -e "OPCODE_AGENTS=$OPCODE_AGENTS" \
+    -e "SANDBOX_VERSION=$IMG_VERSION" \
+    --entrypoint bash local:opencode -c \
+    "bash /opt/opencode-sandbox/configure-opencode.sh /home/dev/.config/opencode /opt/opencode-sandbox/preconfig ${merge_args[*]:-}" \
+    || error "Config seeding failed"
+mkdir -p "$STATE_DIR"
+printf '%s\n' "$IMG_VERSION" > "$STATE_DIR/seed-version"
+printf '%s\n' "${VARIANT:-minimal}" > "$STATE_DIR/variant"
+info "Config seeded (version: $IMG_VERSION)"
+
+# ── Install wrapper ──────────────────────────────────────────
 cp "$SCRIPT_DIR/opencode" "$HOME/bin/opencode"
 chmod +x "$HOME/bin/opencode"
 info "Installed wrapper to ~/bin/opencode"
@@ -321,7 +409,9 @@ else
     fi
 fi
 
-echo "Usage:"
+echo "First session:"
 echo "  cd ~/code/my-project"
 echo "  opencode"
+echo "  Inside opencode run /connect to pick a provider (free models available"
+echo "  via OpenCode Zen), then /help to get started."
 echo ""

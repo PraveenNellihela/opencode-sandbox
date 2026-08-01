@@ -60,21 +60,45 @@ README is restructured.
 
 ## Architecture Overview
 
-- **Build flow:** `install.sh` parses flags -> `docker build --build-arg ...`
-  -> the Dockerfile passes build args through as `ENV` ->
-  `scripts/configure-opencode.sh` generates `~/.config/opencode/opencode.json`
-  from the `preconfig/opencode.json` template and seeds agents -> optional
-  skill clone steps -> opencode install (see Conventions).
-- **Build args:** `INSTALL_NODE`, `INSTALL_PYTHON`, `INSTALL_GO`,
-  `INSTALL_CLI_TOOLS`, `OPCODE_PLUGINS`, `OPCODE_MCP`, `OPCODE_AGENTS`.
+- **Install flow:** `install.sh` parses flags -> **pulls** the prebuilt image
+  from GHCR (`ghcr.io/praveennellihela/opencode-sandbox:{minimal,recommended}`,
+  built by CI's `publish` job) OR `docker build`s locally when custom flags
+  are used -> runs `scripts/configure-opencode.sh` in a one-off container
+  against the `opencode-config` **volume** -> installs the `opencode` wrapper
+  to `~/bin`.
+- **Config lifecycle:** config is NOT baked into the image. The image carries
+  the seeder at `/opt/opencode-sandbox/` (`configure-opencode.sh` +
+  `preconfig/`). `install.sh` seeds the volume:
+  - fresh write when the volume has no `opencode.json`,
+  - `merge` mode otherwise (jq union: user's config wins, new defaults added).
+  - Agent files are seeded with no-clobber semantics (never overwrite user
+    edits). The stamp `.sandbox-seed-version` (image VERSION) drives
+    re-seeding; the wrapper warns when the image is newer than the stamp.
+- **Build args (Dockerfile):** `INSTALL_NODE`, `INSTALL_PYTHON`,
+  `INSTALL_CLI_TOOLS`, `OPCODE_PLUGINS` (skills only), `SANDBOX_VERSION`
+  (git sha), `NODE_VERSION`, `MISE_VERSION`. There is NO Go, NO MCP/agents
+  args — those are seed-time only.
+- **Base image:** `ubuntu:26.04` pinned by digest. Builds use BuildKit:
+  a single `apt-get update` shared across layers via cache mounts
+  (`/var/lib/apt/lists`, `/var/cache/apt`), fail-fast apt options, Node via
+  pinned tarball (no nodesource), Python via apt, mise always installed.
 - **Runtime:** image `local:opencode`, runs as non-root `dev` user,
   `ENTRYPOINT ["opencode"]`. The `opencode` wrapper (repo root) mounts the
   current directory at `/home/dev/workspace` and the volumes:
   - `opencode-config` -> `~/.config/opencode` (settings, plugins, agents, skills)
   - `opencode-data` -> `~/.local/share/opencode` (auth tokens, sessions)
-- **Seeding gotcha:** volumes are only seeded when empty. Repo changes to
-  config/agents/skills do NOT appear in existing installs until
-  `docker volume rm opencode-config opencode-data` and a rebuild.
+  - `opencode-tools` -> `~/.mise` (runtime-installed toolchains via mise;
+    `MISE_DATA_DIR`/`MISE_CONFIG_DIR` point into it)
+  - Hardening: `--cap-drop ALL`, `--security-opt no-new-privileges`;
+    `OPCODE_SANDBOX_READONLY=1` adds `--read-only` + tmpfs `/tmp`;
+    `OPCODE_SANDBOX_MEMORY`/`OPCODE_SANDBOX_PIDS` map to `--memory`/`--pids-limit`.
+    Proxy env vars are forwarded. Install state lives in
+    `~/.config/opencode-sandbox/` (`variant`, `seed-version`).
+- **Seeding gotcha:** the config volume is only seeded when empty or when the
+  seed stamp differs from the image version. Skills in the image land in the
+  volume only on the first empty-volume mount (Docker's copy-on-mount). Repo
+  changes to config/agents propagate via `install.sh --update` (re-seed);
+  changes to skills still require `docker volume rm opencode-config` once.
 - `install.sh -p` accepts plugins AND skills. Skill names are skipped in
   `scripts/configure-opencode.sh` (they are not `opencode.json` plugins) and
   installed by the Dockerfile into `~/.config/opencode/skills/`.
@@ -140,7 +164,7 @@ sets also appear in `test/fixtures/golden_{minimal,recommended}.json`.
   network-dependent).
 - **Trap:** `test_install_flags.bats` and `test_wrapper.bats` HANG locally
   when the Docker daemon is running, because `install.sh`/`opencode` proceed
-  into real image builds. Stub it out:
+  into real image pulls/builds. Stub it out:
   `mkdir -p /tmp/fakedocker && printf '#!/bin/bash\nexit 1\n' > /tmp/fakedocker/docker && chmod +x /tmp/fakedocker/docker && PATH="/tmp/fakedocker:$PATH" bats ...`
   (the wrapper test needs a stub that fails `image inspect` but succeeds
   otherwise).
@@ -149,8 +173,13 @@ sets also appear in `test/fixtures/golden_{minimal,recommended}.json`.
 
 - opencode is installed at latest version (no pinning); the Dockerfile retry
   loop (5 attempts) handles transient "connection reset" download failures.
+- Node.js is a pinned LTS tarball (`NODE_VERSION` build arg); mise is a
+  pinned release (`MISE_VERSION`). Bump deliberately.
 - `impeccable` requires Node.js (auto-enabled by `install.sh`); `emil` does
   not (pure markdown).
+- There is deliberately no Go (or any other language) baked in — anything
+  beyond Node/Python/CLI tools is a runtime `mise use -g` install (persisted
+  in the `opencode-tools` volume).
 - Pre-commit hooks: shellcheck + shfmt (`.pre-commit-config.yaml`); run
   `pre-commit install` after cloning.
 - Branching: `development` is the working branch; PRs target `main`.
