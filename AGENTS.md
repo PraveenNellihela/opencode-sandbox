@@ -79,9 +79,12 @@ README is restructured.
   (git sha), `NODE_VERSION`, `MISE_VERSION`. There is NO Go, NO MCP/agents
   args — those are seed-time only.
 - **Base image:** `ubuntu:26.04` pinned by digest. Builds use BuildKit:
-  a single `apt-get update` shared across layers via cache mounts
-  (`/var/lib/apt/lists`, `/var/cache/apt`), fail-fast apt options, Node via
-  pinned tarball (no nodesource), Python via apt, mise always installed.
+  each apt layer runs its own `apt-get update && apt-get install`
+  (cache-mount contents are not guaranteed visible across RUNs, so a
+  plain install sees an empty index), with `/var/lib/apt/lists` and
+  `/var/cache/apt` cache mounts keeping the index and downloads warm
+  across builds; fail-fast apt options, Node via pinned tarball (no
+  nodesource), Python via apt, mise always installed.
 - **Runtime:** image `local:opencode`, runs as non-root `dev` user,
   `ENTRYPOINT ["opencode"]`. The `opencode` wrapper (repo root) mounts the
   current directory at `/home/dev/workspace` and the volumes:

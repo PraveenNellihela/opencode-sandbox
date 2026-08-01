@@ -237,9 +237,11 @@ RUN apt-get install -y --no-install-recommends \
     your-package-here
 ```
 
-(There is a single `apt-get update` per build — the package index is shared
-across layers via BuildKit cache mounts, so later `apt-get install` steps
-don't re-download it.)
+(Each apt layer runs its own `apt-get update && apt-get install` —
+cache-mount contents aren't guaranteed visible across RUN steps, so a
+plain install would see an empty index. `/var/lib/apt/lists` and
+`/var/cache/apt` BuildKit cache mounts keep the index and .deb downloads
+warm across builds and layers.)
 
 Then rebuild:
 

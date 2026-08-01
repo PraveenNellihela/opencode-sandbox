@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Requires BuildKit (default in Docker 23+/Desktop, Podman, and CI's buildx).
-# The apt cache mounts share package indexes across layers so each build
-# downloads the apt index only once.
+# The apt cache mounts keep the package index and .deb downloads warm
+# across builds and layers.
 
 FROM ubuntu:26.04@sha256:3131b4cc82a783df6c9df078f86e01819a13594b865c2cad47bd1bca2b7063bb
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -17,7 +17,10 @@ ARG NODE_VERSION=24.18.1
 ARG MISE_VERSION=2026.7.18
 
 # ── Base deps ────────────────────────────────────────────────
-# Single apt update per build (cache mount shared by later apt layers).
+# Each apt layer runs its own update+install (cache-mount contents are
+# not guaranteed to be visible to later RUNs in the same build), so a
+# plain install would see an empty package index. The cache mounts keep
+# the index and .deb downloads warm across builds and layers.
 # Fail-fast options stop a slow/flaky mirror from retrying for minutes.
 # jq/xz-utils: needed by the config seeder and tarball installs.
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
@@ -40,13 +43,13 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
 # ── Optional: CLI productivity tools ─────────────────────────
-# Mounts the same apt caches as the base layer: the index written by the
-# base layer's apt-get update lives in the cache mount, not the layer, so
-# installs must mount it too or the lists are empty.
+# Own update+install: the base layer's package index lives in its cache
+# mount, not the layer, so installs must refresh the index themselves.
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ "$INSTALL_CLI_TOOLS" = "true" ]; then \
-      apt-get install -y --no-install-recommends \
+      apt-get -o Acquire::Retries=3 update \
+      && apt-get install -y --no-install-recommends \
         ripgrep \
         fd-find \
         tmux \
@@ -69,10 +72,12 @@ RUN if [ "$INSTALL_NODE" = "true" ]; then \
     fi
 
 # ── Optional: Python 3 ───────────────────────────────────────
+# Own update+install (same reason as the CLI tools layer).
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ "$INSTALL_PYTHON" = "true" ]; then \
-      apt-get install -y --no-install-recommends \
+      apt-get -o Acquire::Retries=3 update \
+      && apt-get install -y --no-install-recommends \
         python3 \
         python3-pip \
         python3-venv \
